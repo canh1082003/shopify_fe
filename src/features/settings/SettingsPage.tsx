@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Info, Send, Key, ShieldCheck, RefreshCw } from 'lucide-react';
 import { Settings, ShopifyIntegrationStatus } from '../../types';
-import { api, TokenStatusInfo } from '../../services/api';
+import { api, TokenStatusInfo } from '../../api';
 import { toast } from 'sonner';
 
-interface SettingsPageProps {
-  onToast: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
+import { useOutletContext } from 'react-router-dom';
+import { MainLayoutContextType } from '../../layouts/MainLayout';
+
+export interface SettingsPageProps {
+  onToast?: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
 }
 
-export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
+export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
+  const context = useOutletContext<MainLayoutContextType | null>();
+  const onToast = props.onToast || context?.onToast || (() => {});
   const [, setSettings] = useState<Settings | null>(null);
   const [integration, setIntegration] = useState<ShopifyIntegrationStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,7 +29,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
   const [warningLeadTime, setWarningLeadTime] = useState('4');
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [notificationEmail, setNotificationEmail] = useState('');
-  const [digestFrequency, setDigestFrequency] = useState<'immediate' | 'daily' | 'hourly'>('immediate');
+  const [digestFrequency, setDigestFrequency] = useState<'immediate' | 'daily' | 'hourly'>(
+    'immediate'
+  );
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -136,7 +143,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
         digestFrequency,
       });
       setSettings(updated);
-      onToast('success', 'Settings Saved', 'Order fulfillment thresholds and notification rules updated.');
+      onToast(
+        'success',
+        'Settings Saved',
+        'Order fulfillment thresholds and notification rules updated.'
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Save failed';
       onToast('error', 'Error', msg);
@@ -150,11 +161,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
       setIsSendingTest(true);
       const res = await api.sendTestNotification(notificationEmail);
       if (res.isSimulated) {
-        onToast(
-          'info',
-          'Notification Logged (Sandbox)',
-          res.message
-        );
+        onToast('info', 'Notification Logged (Sandbox)', res.message);
       } else {
         onToast('success', 'Email Dispatched', res.message);
       }
@@ -182,7 +189,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
           <div className="panel-header">
             <div>
               <h3 className="panel-title">Store &amp; Shopify Integration</h3>
-              <p className="panel-subtitle">Shopify connection parameters and multi-tenant environment</p>
+              <p className="panel-subtitle">
+                Shopify connection parameters and multi-tenant environment
+              </p>
             </div>
           </div>
 
@@ -198,20 +207,48 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
             }}
           >
             <div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                }}
+              >
                 Store Domain
               </span>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)', marginTop: '0.2rem' }}>
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  color: 'var(--text-main)',
+                  marginTop: '0.2rem',
+                }}
+              >
                 {integration?.shopDomain || 'quickstart-watchdog.myshopify.com'}
               </div>
             </div>
 
             <div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                }}
+              >
                 Connection Status
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
-                <span className={`status-dot ${integration?.isShopifyConnected ? 'connected' : 'demo'}`} />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  marginTop: '0.2rem',
+                }}
+              >
+                <span
+                  className={`status-dot ${integration?.isShopifyConnected ? 'connected' : 'demo'}`}
+                />
                 <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
                   {integration?.isShopifyConnected ? 'App Bridge Connected' : 'Sandbox Demo Mode'}
                 </span>
@@ -219,10 +256,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
             </div>
 
             <div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                }}
+              >
                 API Scopes
               </span>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+              <div
+                style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}
+              >
                 {integration?.scopes.join(', ') || 'read_orders, read_fulfillments'}
               </div>
             </div>
@@ -234,15 +279,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
           <div className="panel-header">
             <div>
               <h3 className="panel-title">Fulfillment SLA &amp; Overdue Detection</h3>
-              <p className="panel-subtitle">Define when an unfulfilled order qualifies as overdue</p>
+              <p className="panel-subtitle">
+                Define when an unfulfilled order qualifies as overdue
+              </p>
             </div>
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.65rem' }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                marginBottom: '0.65rem',
+              }}
+            >
               Overdue Threshold (Hours after Order Placement)
             </label>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
+            <div
+              style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}
+            >
               {(['12', '24', '48', 'custom'] as const).map((preset) => (
                 <button
                   type="button"
@@ -257,7 +313,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
 
             {thresholdPreset === 'custom' && (
               <div style={{ maxWidth: '280px', marginTop: '0.5rem' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                <label
+                  style={{
+                    fontSize: '0.8rem',
+                    color: 'var(--text-muted)',
+                    display: 'block',
+                    marginBottom: '0.35rem',
+                  }}
+                >
                   Enter custom hours:
                 </label>
                 <input
@@ -282,7 +345,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
           </div>
 
           <div style={{ marginBottom: '1.75rem', maxWidth: '320px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                marginBottom: '0.35rem',
+              }}
+            >
               Warning Lead Time (Hours before SLA deadline)
             </label>
             <input
@@ -302,7 +372,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
               }}
               required
             />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)',
+                display: 'block',
+                marginTop: '0.25rem',
+              }}
+            >
               Triggers a Warning state (e.g. 4h before 24h deadline = alert at 20h)
             </span>
           </div>
@@ -318,21 +395,36 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
               lineHeight: 1.6,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '0.4rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontWeight: 700,
+                color: 'var(--primary)',
+                marginBottom: '0.4rem',
+              }}
+            >
               <Info size={16} /> Order Watchdog SLA Calculation Rules
             </div>
             <ul style={{ paddingLeft: '1.25rem', color: 'var(--text-secondary)' }}>
               <li>
-                <strong>Elapsed Time:</strong> Calculated from the Shopify order creation timestamp (<code>createdAt</code>) using UTC server time as the canonical source of truth.
+                <strong>Elapsed Time:</strong> Calculated from the Shopify order creation timestamp
+                (<code>createdAt</code>) using UTC server time as the canonical source of truth.
               </li>
               <li>
-                <strong>Financial Eligibility:</strong> Only orders with <code>paid</code> or <code>authorized</code> payment status are monitored for delivery delays. Unpaid/pending orders are excluded.
+                <strong>Financial Eligibility:</strong> Only orders with <code>paid</code> or{' '}
+                <code>authorized</code> payment status are monitored for delivery delays.
+                Unpaid/pending orders are excluded.
               </li>
               <li>
-                <strong>Canceled Orders:</strong> Orders marked <code>cancelledAt</code> in Shopify are immediately excluded and any active alerts are resolved.
+                <strong>Canceled Orders:</strong> Orders marked <code>cancelledAt</code> in Shopify
+                are immediately excluded and any active alerts are resolved.
               </li>
               <li>
-                <strong>Partial Fulfillment:</strong> Orders with outstanding unfulfilled quantities (<code>fulfillableQuantity &gt; 0</code>) are NOT treated as fully fulfilled and will trigger alerts if delayed.
+                <strong>Partial Fulfillment:</strong> Orders with outstanding unfulfilled quantities
+                (<code>fulfillableQuantity &gt; 0</code>) are NOT treated as fully fulfilled and
+                will trigger alerts if delayed.
               </li>
             </ul>
           </div>
@@ -343,12 +435,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
           <div className="panel-header">
             <div>
               <h3 className="panel-title">Automated Email Notifications</h3>
-              <p className="panel-subtitle">Receive instant or digest alerts when orders become overdue</p>
+              <p className="panel-subtitle">
+                Receive instant or digest alerts when orders become overdue
+              </p>
             </div>
           </div>
 
           <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer' }}
+            >
               <input
                 type="checkbox"
                 checked={emailEnabled}
@@ -362,9 +458,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
           </div>
 
           {emailEnabled && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+                marginTop: '1rem',
+              }}
+            >
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    marginBottom: '0.35rem',
+                  }}
+                >
                   Notification Recipient Email *
                 </label>
                 <div style={{ display: 'flex', gap: '0.75rem', maxWidth: '520px' }}>
@@ -397,13 +507,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
               </div>
 
               <div style={{ maxWidth: '320px' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    marginBottom: '0.35rem',
+                  }}
+                >
                   Delivery Frequency
                 </label>
                 <select
                   className="select-dropdown"
                   value={digestFrequency}
-                  onChange={(e) => setDigestFrequency(e.target.value as 'immediate' | 'daily' | 'hourly')}
+                  onChange={(e) =>
+                    setDigestFrequency(e.target.value as 'immediate' | 'daily' | 'hourly')
+                  }
                   style={{ width: '100%' }}
                 >
                   <option value="immediate">Immediate (Real-time as orders become overdue)</option>
@@ -433,11 +552,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
       <div className="panel-card" style={{ marginTop: '2rem' }}>
         <div className="panel-header">
           <div>
-            <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Key size={18} color="var(--primary)" /> Token Authentication &amp; Session Diagnostics
+            <h3
+              className="panel-title"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Key size={18} color="var(--primary)" /> Token Authentication &amp; Session
+              Diagnostics
             </h3>
             <p className="panel-subtitle">
-              Kiểm tra tính hợp lệ của JWT token, cơ chế tự động refetch / refresh token và nhận diện HTTP Status
+              Kiểm tra tính hợp lệ của JWT token, cơ chế tự động refetch / refresh token và nhận
+              diện HTTP Status
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -476,10 +600,24 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
           }}
         >
           <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+              }}
+            >
               Trạng thái Token
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', fontWeight: 700 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginTop: '0.25rem',
+                fontWeight: 700,
+              }}
+            >
               <span
                 style={{
                   width: '8px',
@@ -495,7 +633,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
           </div>
 
           <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+              }}
+            >
               Định dạng chuẩn
             </span>
             <div style={{ fontWeight: 600, marginTop: '0.25rem' }}>
@@ -504,7 +648,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
           </div>
 
           <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+              }}
+            >
               Thời hạn còn lại
             </span>
             <div style={{ fontWeight: 600, marginTop: '0.25rem' }}>
@@ -515,7 +665,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
           </div>
 
           <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+              }}
+            >
               Tự động phục hồi khi lỗi 401
             </span>
             <div style={{ color: 'var(--text-link)', fontWeight: 600, marginTop: '0.25rem' }}>

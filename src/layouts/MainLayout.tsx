@@ -1,0 +1,133 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from '../components/Sidebar';
+import { TopBar } from '../components/TopBar';
+import { OrderDetailsModal } from '../components/OrderDetailsModal';
+import { api } from '../api';
+import { DashboardSummary, Order } from '../types';
+import { toast } from 'sonner';
+
+export interface MainLayoutContextType {
+  summary: DashboardSummary | null;
+  refreshSummary: () => Promise<void>;
+  openOrderModal: (order: Order) => void;
+  openOrderById: (orderId: string) => Promise<void>;
+  onToast: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
+}
+
+export const MainLayout: React.FC = () => {
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('ow_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  // Apply Theme
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('ow_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  // Toast Helper
+  const handleToast = useCallback(
+    (type: 'success' | 'error' | 'info', title: string, message: string) => {
+      if (type === 'success') {
+        toast.success(title, { description: message });
+      } else if (type === 'error') {
+        toast.error(title, { description: message });
+      } else {
+        toast.info(title, { description: message });
+      }
+    },
+    []
+  );
+
+  // Fetch Dashboard Summary
+  const fetchSummary = useCallback(async () => {
+    try {
+      const data = await api.dashboard.getDashboardSummary(true);
+      setSummary(data);
+    } catch (err) {
+      console.error('Failed to fetch dashboard summary:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSummary();
+    const interval = setInterval(fetchSummary, 30000); // 30s auto-refresh
+    return () => clearInterval(interval);
+  }, [fetchSummary]);
+
+  // Handle Manual Sync
+  const handleSync = async () => {
+    try {
+      setIsSyncing(true);
+      const res = await api.integrations.syncShopify();
+      await fetchSummary();
+      toast.success('Đồng bộ hoàn tất', { description: res.message });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Đồng bộ thất bại';
+      toast.error('Lỗi đồng bộ', { description: msg });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Handle opening modal by Order ID
+  const handleOpenOrderById = async (orderId: string) => {
+    try {
+      const order = await api.orders.getOrderById(orderId, true);
+      setSelectedOrder(order);
+    } catch {
+      toast.error('Lỗi truy vấn', { description: 'Không tìm thấy chi tiết đơn hàng' });
+    }
+  };
+
+  const contextValue: MainLayoutContextType = {
+    summary,
+    refreshSummary: fetchSummary,
+    openOrderModal: (order: Order) => setSelectedOrder(order),
+    openOrderById: handleOpenOrderById,
+    onToast: handleToast,
+  };
+
+  return (
+    <div className="saas-layout">
+      {/* Sidebar Navigation */}
+      <Sidebar
+        summary={summary}
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
+      />
+
+      {/* Main Content Area */}
+      <div className="main-wrapper">
+        <TopBar
+          summary={summary}
+          onOpenMobile={() => setMobileMenuOpen(true)}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onSync={handleSync}
+          isSyncing={isSyncing}
+        />
+
+        <main className="page-content">
+          <Outlet context={contextValue} />
+        </main>
+      </div>
+
+      {/* Order Detail Modal */}
+      {selectedOrder && (
+        <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+      )}
+    </div>
+  );
+};
+
+export default MainLayout;

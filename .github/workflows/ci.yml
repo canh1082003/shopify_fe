@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-validate:
-    name: Build & Validate (Node.js 20)
+    name: Lint, Format, Audit & Build (Node.js 20)
     runs-on: ubuntu-latest
 
     steps:
@@ -23,6 +23,15 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
+
+      - name: Security Vulnerabilities Audit
+        run: npm run audit
+
+      - name: Code Quality & Linting Check (ESLint)
+        run: npm run lint
+
+      - name: Code Formatting Check (Prettier)
+        run: npm run format:check
 
       - name: Build Frontend (TypeScript + Vite)
         run: npm run build

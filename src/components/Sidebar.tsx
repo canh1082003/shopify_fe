@@ -1,10 +1,11 @@
 import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ShieldAlert, LayoutDashboard, ShoppingCart, Bell, Settings, X } from 'lucide-react';
 import { NavigationTab, DashboardSummary } from '../types';
 
 interface SidebarProps {
-  activeTab: NavigationTab;
-  onSelectTab: (tab: NavigationTab) => void;
+  activeTab?: NavigationTab;
+  onSelectTab?: (tab: NavigationTab) => void;
   summary: DashboardSummary | null;
   mobileOpen: boolean;
   onCloseMobile: () => void;
@@ -17,12 +18,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
   onCloseMobile,
 }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const currentTab: NavigationTab =
+    activeTab ||
+    (() => {
+      if (location.pathname.startsWith('/orders')) return 'orders';
+      if (location.pathname.startsWith('/alerts')) return 'alerts';
+      if (location.pathname.startsWith('/settings')) return 'settings';
+      return 'dashboard';
+    })();
+
   const activeAlertsCount = summary?.monitoringStatus.activeAlertsCount || 0;
   const shopDomain = summary?.monitoringStatus.shopDomain || 'quickstart-watchdog.myshopify.com';
   const isDemo = summary?.monitoringStatus.isDemoMode ?? true;
 
   const handleNavClick = (tab: NavigationTab) => {
-    onSelectTab(tab);
+    if (onSelectTab) {
+      onSelectTab(tab);
+    }
+    switch (tab) {
+      case 'dashboard':
+        navigate('/');
+        break;
+      case 'orders':
+        navigate('/orders');
+        break;
+      case 'alerts':
+        navigate('/alerts');
+        break;
+      case 'settings':
+        navigate('/settings');
+        break;
+    }
     onCloseMobile();
   };
 
@@ -55,7 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <nav className="sidebar-nav">
         <button
           id="nav-overview"
-          className={`nav-item-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+          className={`nav-item-btn ${currentTab === 'dashboard' ? 'active' : ''}`}
           onClick={() => handleNavClick('dashboard')}
         >
           <div className="nav-item-left">
@@ -66,7 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           id="nav-orders"
-          className={`nav-item-btn ${activeTab === 'orders' ? 'active' : ''}`}
+          className={`nav-item-btn ${currentTab === 'orders' ? 'active' : ''}`}
           onClick={() => handleNavClick('orders')}
         >
           <div className="nav-item-left">
@@ -85,21 +114,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           id="nav-alerts"
-          className={`nav-item-btn ${activeTab === 'alerts' ? 'active' : ''}`}
+          className={`nav-item-btn ${currentTab === 'alerts' ? 'active' : ''}`}
           onClick={() => handleNavClick('alerts')}
         >
           <div className="nav-item-left">
             <Bell size={18} />
             <span>Alert Center</span>
           </div>
-          {activeAlertsCount > 0 && (
-            <span className="nav-alert-badge">{activeAlertsCount}</span>
-          )}
+          {activeAlertsCount > 0 && <span className="nav-alert-badge">{activeAlertsCount}</span>}
         </button>
 
         <button
           id="nav-settings"
-          className={`nav-item-btn ${activeTab === 'settings' ? 'active' : ''}`}
+          className={`nav-item-btn ${currentTab === 'settings' ? 'active' : ''}`}
           onClick={() => handleNavClick('settings')}
         >
           <div className="nav-item-left">

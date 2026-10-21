@@ -1,16 +1,7 @@
 export type FinancialStatus =
-  | 'paid'
-  | 'authorized'
-  | 'pending'
-  | 'partially_refunded'
-  | 'refunded'
-  | 'voided';
+  'paid' | 'authorized' | 'pending' | 'partially_refunded' | 'refunded' | 'voided';
 
-export type FulfillmentStatus =
-  | 'unfulfilled'
-  | 'partial'
-  | 'fulfilled'
-  | 'restocked';
+export type FulfillmentStatus = 'unfulfilled' | 'partial' | 'fulfilled' | 'restocked';
 
 export interface LineItem {
   id: string;

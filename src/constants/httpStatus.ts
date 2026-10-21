@@ -35,7 +35,7 @@ export const HttpStatus = {
   GATEWAY_TIMEOUT: 504,
 } as const;
 
-export type HttpStatusCode = typeof HttpStatus[keyof typeof HttpStatus];
+export type HttpStatusCode = (typeof HttpStatus)[keyof typeof HttpStatus];
 
 export const ErrorCode = {
   AUTH_TOKEN_MISSING: 'AUTH_TOKEN_MISSING',
@@ -59,7 +59,7 @@ export const ErrorCode = {
   SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
 } as const;
 
-export type ErrorCodeType = typeof ErrorCode[keyof typeof ErrorCode];
+export type ErrorCodeType = (typeof ErrorCode)[keyof typeof ErrorCode];
 
 /**
  * Friendly status messages in Vietnamese & English for UI Toasts
@@ -68,17 +68,44 @@ export const HttpStatusFeedback: Record<number, { title: string; defaultMessage:
   200: { title: 'Thành công', defaultMessage: 'Yêu cầu được thực thi thành công.' },
   201: { title: 'Đã tạo mới', defaultMessage: 'Tạo tài nguyên mới thành công.' },
   204: { title: 'Hoàn tất', defaultMessage: 'Thao tác thực thi thành công.' },
-  400: { title: 'Yêu cầu không hợp lệ', defaultMessage: 'Dữ liệu gửi lên không đúng định dạng hoặc thiếu thông tin.' },
-  401: { title: 'Xác thực thất bại', defaultMessage: 'Token không hợp lệ hoặc đã hết hạn. Đang làm mới phiên làm việc...' },
-  403: { title: 'Truy cập bị từ chối', defaultMessage: 'Bạn không có quyền thực hiện thao tác này.' },
+  400: {
+    title: 'Yêu cầu không hợp lệ',
+    defaultMessage: 'Dữ liệu gửi lên không đúng định dạng hoặc thiếu thông tin.',
+  },
+  401: {
+    title: 'Xác thực thất bại',
+    defaultMessage: 'Token không hợp lệ hoặc đã hết hạn. Đang làm mới phiên làm việc...',
+  },
+  403: {
+    title: 'Truy cập bị từ chối',
+    defaultMessage: 'Bạn không có quyền thực hiện thao tác này.',
+  },
   404: { title: 'Không tìm thấy', defaultMessage: 'Không tìm thấy dữ liệu yêu cầu.' },
-  409: { title: 'Xung đột dữ liệu', defaultMessage: 'Tài nguyên đã tồn tại hoặc đang xung đột trạng thái.' },
-  422: { title: 'Lỗi xác thực dữ liệu', defaultMessage: 'Dữ liệu đầu vào không vượt qua kiểm tra nghiệp vụ.' },
-  429: { title: 'Quá nhiều yêu cầu', defaultMessage: 'Đạt giới hạn gọi API. Vui lòng thử lại sau ít giây.' },
-  500: { title: 'Lỗi máy chủ nội bộ', defaultMessage: 'Máy chủ Backend gặp sự cố. Vui lòng kiểm tra log hệ thống.' },
-  502: { title: 'Lỗi cổng Gateway', defaultMessage: 'Không thể kết nối đến dịch vụ Shopify phía trên.' },
+  409: {
+    title: 'Xung đột dữ liệu',
+    defaultMessage: 'Tài nguyên đã tồn tại hoặc đang xung đột trạng thái.',
+  },
+  422: {
+    title: 'Lỗi xác thực dữ liệu',
+    defaultMessage: 'Dữ liệu đầu vào không vượt qua kiểm tra nghiệp vụ.',
+  },
+  429: {
+    title: 'Quá nhiều yêu cầu',
+    defaultMessage: 'Đạt giới hạn gọi API. Vui lòng thử lại sau ít giây.',
+  },
+  500: {
+    title: 'Lỗi máy chủ nội bộ',
+    defaultMessage: 'Máy chủ Backend gặp sự cố. Vui lòng kiểm tra log hệ thống.',
+  },
+  502: {
+    title: 'Lỗi cổng Gateway',
+    defaultMessage: 'Không thể kết nối đến dịch vụ Shopify phía trên.',
+  },
   503: { title: 'Dịch vụ tạm ngừng', defaultMessage: 'Hệ thống đang bảo trì hoặc quá tải.' },
-  504: { title: 'Hết thời gian chờ', defaultMessage: 'Yêu cầu tới máy chủ vượt quá thời gian cho phép.' },
+  504: {
+    title: 'Hết thời gian chờ',
+    defaultMessage: 'Yêu cầu tới máy chủ vượt quá thời gian cho phép.',
+  },
 };
 
 export function getStatusFeedback(statusCode: number): { title: string; defaultMessage: string } {

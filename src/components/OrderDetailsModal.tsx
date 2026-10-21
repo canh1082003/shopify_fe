@@ -73,10 +73,23 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                 border: '1px solid var(--border-subtle)',
               }}
             >
-              <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <div
+                style={{
+                  fontSize: '0.725rem',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                }}
+              >
                 Total Value
               </div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.2rem' }}>
+              <div
+                style={{
+                  fontSize: '1.2rem',
+                  fontWeight: 800,
+                  color: 'var(--text-main)',
+                  marginTop: '0.2rem',
+                }}
+              >
                 ${order.totalAmount.toFixed(2)} {order.currencyCode}
               </div>
             </div>
@@ -89,10 +102,24 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                 border: '1px solid var(--border-subtle)',
               }}
             >
-              <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <div
+                style={{
+                  fontSize: '0.725rem',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                }}
+              >
                 Payment Status
               </div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#38bdf8', marginTop: '0.2rem', textTransform: 'capitalize' }}>
+              <div
+                style={{
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  color: '#38bdf8',
+                  marginTop: '0.2rem',
+                  textTransform: 'capitalize',
+                }}
+              >
                 {order.financialStatus}
               </div>
             </div>
@@ -105,10 +132,23 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                 border: '1px solid var(--border-subtle)',
               }}
             >
-              <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <div
+                style={{
+                  fontSize: '0.725rem',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                }}
+              >
                 Fulfillable Items
               </div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: order.fulfillableQuantity > 0 ? '#f59e0b' : '#10b981', marginTop: '0.2rem' }}>
+              <div
+                style={{
+                  fontSize: '1.2rem',
+                  fontWeight: 800,
+                  color: order.fulfillableQuantity > 0 ? '#f59e0b' : '#10b981',
+                  marginTop: '0.2rem',
+                }}
+              >
                 {order.fulfillableQuantity} / {order.totalItems}
               </div>
             </div>
@@ -137,14 +177,28 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Fulfillment Deadline:</span>
-                <span style={{ fontWeight: 600, color: order.isOverdue ? 'var(--critical)' : 'inherit' }}>
+                <span
+                  style={{
+                    fontWeight: 600,
+                    color: order.isOverdue ? 'var(--critical)' : 'inherit',
+                  }}
+                >
                   {formatDate(order.deadline)}
                 </span>
               </div>
               {order.isOverdue && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--critical)', fontWeight: 700 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    color: 'var(--critical)',
+                    fontWeight: 700,
+                  }}
+                >
                   <span>Overdue Duration:</span>
-                  <span>+{Math.floor(order.overdueMinutes / 60)}h {order.overdueMinutes % 60}m</span>
+                  <span>
+                    +{Math.floor(order.overdueMinutes / 60)}h {order.overdueMinutes % 60}m
+                  </span>
                 </div>
               )}
             </div>

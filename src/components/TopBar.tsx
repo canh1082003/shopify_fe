@@ -1,9 +1,10 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { Menu, Sun, Moon, RefreshCw, ShoppingBag } from 'lucide-react';
 import { NavigationTab, DashboardSummary } from '../types';
 
 interface TopBarProps {
-  activeTab: NavigationTab;
+  activeTab?: NavigationTab;
   summary: DashboardSummary | null;
   onOpenMobile: () => void;
   theme: 'dark' | 'light';
@@ -21,8 +22,19 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSync,
   isSyncing,
 }) => {
+  const location = useLocation();
+
+  const currentTab: NavigationTab =
+    activeTab ||
+    (() => {
+      if (location.pathname.startsWith('/orders')) return 'orders';
+      if (location.pathname.startsWith('/alerts')) return 'alerts';
+      if (location.pathname.startsWith('/settings')) return 'settings';
+      return 'dashboard';
+    })();
+
   const getTabTitle = () => {
-    switch (activeTab) {
+    switch (currentTab) {
       case 'dashboard':
         return {
           title: 'Overview Dashboard',

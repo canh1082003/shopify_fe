@@ -9,20 +9,24 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
 import { Alert } from '../../types';
-import { api } from '../../services/api';
+import { api } from '../../api';
+import { MainLayoutContextType } from '../../layouts/MainLayout';
 
-interface AlertsPageProps {
-  onOpenOrderModalById: (orderId: string) => void;
-  onToast: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
+export interface AlertsPageProps {
+  onOpenOrderModalById?: (orderId: string) => void;
+  onToast?: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
 }
 
-export const AlertsPage: React.FC<AlertsPageProps> = ({
-  onOpenOrderModalById,
-  onToast,
-}) => {
+export const AlertsPage: React.FC<AlertsPageProps> = (props) => {
+  const context = useOutletContext<MainLayoutContextType | null>();
+  const onOpenOrderModalById = props.onOpenOrderModalById || context?.openOrderById || (() => {});
+  const onToast = props.onToast || context?.onToast || (() => {});
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'resolved'>('all');
+  const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'resolved'>(
+    'all'
+  );
   const [summary, setSummary] = useState<{
     totalActive: number;
     criticalCount: number;
@@ -63,7 +67,11 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
     try {
       await api.acknowledgeAlert(alertId);
       setAlerts((prev) =>
-        prev.map((a) => (a.id === alertId ? { ...a, status: 'acknowledged' as const, acknowledgedAt: new Date().toISOString() } : a))
+        prev.map((a) =>
+          a.id === alertId
+            ? { ...a, status: 'acknowledged' as const, acknowledgedAt: new Date().toISOString() }
+            : a
+        )
       );
       if (summary) {
         setSummary({
@@ -90,12 +98,18 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
         <div className="metric-card">
           <div className="metric-card-top">
             <span className="metric-label">Active Overdue Alerts</span>
-            <div className="metric-icon-box" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+            <div
+              className="metric-icon-box"
+              style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}
+            >
               <Bell size={20} />
             </div>
           </div>
           <div className="metric-value-row">
-            <span className="metric-value" style={{ color: (summary?.totalActive ?? 0) > 0 ? '#ef4444' : 'inherit' }}>
+            <span
+              className="metric-value"
+              style={{ color: (summary?.totalActive ?? 0) > 0 ? '#ef4444' : 'inherit' }}
+            >
               {summary?.totalActive ?? '—'}
             </span>
           </div>
@@ -105,7 +119,10 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
         <div className="metric-card">
           <div className="metric-card-top">
             <span className="metric-label">Critical Overdue</span>
-            <div className="metric-icon-box" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+            <div
+              className="metric-icon-box"
+              style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}
+            >
               <AlertOctagon size={20} />
             </div>
           </div>
@@ -120,7 +137,10 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
         <div className="metric-card">
           <div className="metric-card-top">
             <span className="metric-label">Warning Window</span>
-            <div className="metric-icon-box" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+            <div
+              className="metric-icon-box"
+              style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}
+            >
               <AlertTriangle size={20} />
             </div>
           </div>
@@ -135,7 +155,10 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
         <div className="metric-card">
           <div className="metric-card-top">
             <span className="metric-label">Resolved Shipments</span>
-            <div className="metric-icon-box" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+            <div
+              className="metric-icon-box"
+              style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}
+            >
               <CheckCircle size={20} />
             </div>
           </div>
@@ -153,25 +176,37 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
         <div className="tabs-group">
           <button
             className={`tab-btn ${severityFilter === 'all' ? 'active' : ''}`}
-            onClick={() => { setSeverityFilter('all'); setPage(1); }}
+            onClick={() => {
+              setSeverityFilter('all');
+              setPage(1);
+            }}
           >
             All Alerts
           </button>
           <button
             className={`tab-btn ${severityFilter === 'critical' ? 'active' : ''}`}
-            onClick={() => { setSeverityFilter('critical'); setPage(1); }}
+            onClick={() => {
+              setSeverityFilter('critical');
+              setPage(1);
+            }}
           >
             Critical
           </button>
           <button
             className={`tab-btn ${severityFilter === 'warning' ? 'active' : ''}`}
-            onClick={() => { setSeverityFilter('warning'); setPage(1); }}
+            onClick={() => {
+              setSeverityFilter('warning');
+              setPage(1);
+            }}
           >
             Warning
           </button>
           <button
             className={`tab-btn ${severityFilter === 'resolved' ? 'active' : ''}`}
-            onClick={() => { setSeverityFilter('resolved'); setPage(1); }}
+            onClick={() => {
+              setSeverityFilter('resolved');
+              setPage(1);
+            }}
           >
             Resolved
           </button>
@@ -196,14 +231,27 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <td
+                    colSpan={7}
+                    style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}
+                  >
                     Loading alert status...
                   </td>
                 </tr>
               ) : alerts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.25rem' }}>
+                  <td
+                    colSpan={7}
+                    style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}
+                  >
+                    <div
+                      style={{
+                        fontSize: '1.05rem',
+                        fontWeight: 600,
+                        color: 'var(--text-main)',
+                        marginBottom: '0.25rem',
+                      }}
+                    >
                       No alerts matching this filter
                     </div>
                     <p style={{ fontSize: '0.85rem' }}>
@@ -228,8 +276,8 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
                           alert.severity === 'critical'
                             ? 'badge-critical'
                             : alert.severity === 'warning'
-                            ? 'badge-warning'
-                            : 'badge-success'
+                              ? 'badge-warning'
+                              : 'badge-success'
                         }`}
                       >
                         {alert.severity === 'critical' && <AlertOctagon size={12} />}
@@ -238,10 +286,13 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
                         {alert.severity}
                       </span>
                     </td>
-                    <td style={{ maxWidth: '300px', fontSize: '0.825rem' }}>
-                      {alert.reason}
-                    </td>
-                    <td style={{ fontWeight: 600, color: alert.severity === 'critical' ? 'var(--critical)' : 'inherit' }}>
+                    <td style={{ maxWidth: '300px', fontSize: '0.825rem' }}>{alert.reason}</td>
+                    <td
+                      style={{
+                        fontWeight: 600,
+                        color: alert.severity === 'critical' ? 'var(--critical)' : 'inherit',
+                      }}
+                    >
                       {alert.elapsedHours}h elapsed
                     </td>
                     <td style={{ color: 'var(--text-secondary)' }}>
@@ -256,7 +307,10 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
                       <span
                         className="badge"
                         style={{
-                          background: alert.status === 'active' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                          background:
+                            alert.status === 'active'
+                              ? 'rgba(239, 68, 68, 0.1)'
+                              : 'rgba(255, 255, 255, 0.05)',
                           color: alert.status === 'active' ? '#f87171' : 'var(--text-muted)',
                           textTransform: 'capitalize',
                         }}
@@ -294,7 +348,10 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
         </div>
 
         {/* Pagination Row */}
-        <div className="pagination-row" style={{ padding: '1rem 1.5rem', background: 'var(--bg-card-subtle)' }}>
+        <div
+          className="pagination-row"
+          style={{ padding: '1rem 1.5rem', background: 'var(--bg-card-subtle)' }}
+        >
           <div>
             Showing <strong>{alerts.length}</strong> alerts
           </div>
@@ -307,7 +364,14 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({
             >
               <ChevronLeft size={14} /> Previous
             </button>
-            <span style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem', fontSize: '0.85rem' }}>
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 0.5rem',
+                fontSize: '0.85rem',
+              }}
+            >
               Page {page} of {totalPages}
             </span>
             <button

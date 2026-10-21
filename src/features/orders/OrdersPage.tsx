@@ -1,15 +1,30 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Eye, ExternalLink, ChevronLeft, ChevronRight, AlertTriangle, PackageCheck, Clock } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
+import {
+  Search,
+  Eye,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  PackageCheck,
+  Clock,
+} from 'lucide-react';
 import { Order } from '../../types';
-import { api } from '../../services/api';
+import { api } from '../../api';
+import { MainLayoutContextType } from '../../layouts/MainLayout';
 
-interface OrdersPageProps {
-  onOpenOrderModal: (order: Order) => void;
+export interface OrdersPageProps {
+  onOpenOrderModal?: (order: Order) => void;
 }
 
-export const OrdersPage: React.FC<OrdersPageProps> = ({ onOpenOrderModal }) => {
+export const OrdersPage: React.FC<OrdersPageProps> = (props) => {
+  const context = useOutletContext<MainLayoutContextType | null>();
+  const onOpenOrderModal = props.onOpenOrderModal || context?.openOrderModal || (() => {});
   const [orders, setOrders] = useState<Order[]>([]);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'overdue' | 'pending' | 'fulfilled'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'overdue' | 'pending' | 'fulfilled'>(
+    'all'
+  );
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'overdue_desc'>('newest');
   const [page, setPage] = useState(1);
@@ -125,14 +140,27 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ onOpenOrderModal }) => {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <td
+                    colSpan={9}
+                    style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}
+                  >
                     Loading orders from store...
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.25rem' }}>
+                  <td
+                    colSpan={9}
+                    style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}
+                  >
+                    <div
+                      style={{
+                        fontSize: '1.05rem',
+                        fontWeight: 600,
+                        color: 'var(--text-main)',
+                        marginBottom: '0.25rem',
+                      }}
+                    >
                       No matching orders found
                     </div>
                     <p style={{ fontSize: '0.85rem' }}>
@@ -179,8 +207,8 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ onOpenOrderModal }) => {
                           order.fulfillmentStatus === 'fulfilled'
                             ? 'badge-success'
                             : order.fulfillmentStatus === 'partial'
-                            ? 'badge-warning'
-                            : 'badge-neutral'
+                              ? 'badge-warning'
+                              : 'badge-neutral'
                         }`}
                       >
                         {order.fulfillmentStatus === 'fulfilled' && <PackageCheck size={12} />}
@@ -189,17 +217,20 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ onOpenOrderModal }) => {
                       </span>
                     </td>
                     <td style={{ color: 'var(--text-secondary)' }}>
-                      {order.deadline ? new Date(order.deadline).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      }) : 'N/A'}
+                      {order.deadline
+                        ? new Date(order.deadline).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : 'N/A'}
                     </td>
                     <td>
                       {order.isOverdue ? (
                         <span className="badge badge-critical">
-                          <AlertTriangle size={12} /> +{Math.floor(order.overdueMinutes / 60)}h {order.overdueMinutes % 60}m
+                          <AlertTriangle size={12} /> +{Math.floor(order.overdueMinutes / 60)}h{' '}
+                          {order.overdueMinutes % 60}m
                         </span>
                       ) : order.fulfillmentStatus === 'fulfilled' ? (
                         <span className="badge badge-success">On-Time</span>
@@ -238,9 +269,13 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ onOpenOrderModal }) => {
         </div>
 
         {/* Server-Side Pagination Row */}
-        <div className="pagination-row" style={{ padding: '1rem 1.5rem', background: 'var(--bg-card-subtle)' }}>
+        <div
+          className="pagination-row"
+          style={{ padding: '1rem 1.5rem', background: 'var(--bg-card-subtle)' }}
+        >
           <div>
-            Showing <strong>{orders.length}</strong> of <strong>{totalCount}</strong> monitored orders
+            Showing <strong>{orders.length}</strong> of <strong>{totalCount}</strong> monitored
+            orders
           </div>
 
           <div className="pagination-actions">
@@ -251,7 +286,14 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ onOpenOrderModal }) => {
             >
               <ChevronLeft size={14} /> Previous
             </button>
-            <span style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem', fontSize: '0.85rem' }}>
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 0.5rem',
+                fontSize: '0.85rem',
+              }}
+            >
               Page {page} of {totalPages}
             </span>
             <button

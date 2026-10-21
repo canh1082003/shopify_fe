@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   Package,
   AlertOctagon,
@@ -10,19 +11,22 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { DashboardSummary, DashboardTrend, Order } from '../../types';
-import { api } from '../../services/api';
+import { api } from '../../api';
+import { MainLayoutContextType } from '../../layouts/MainLayout';
 
-interface DashboardPageProps {
-  summary: DashboardSummary | null;
-  onOpenOrderModal: (order: Order) => void;
-  onNavigateToOrders: () => void;
+export interface DashboardPageProps {
+  summary?: DashboardSummary | null;
+  onOpenOrderModal?: (order: Order) => void;
+  onNavigateToOrders?: () => void;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({
-  summary,
-  onOpenOrderModal,
-  onNavigateToOrders,
-}) => {
+export const DashboardPage: React.FC<DashboardPageProps> = (props) => {
+  const context = useOutletContext<MainLayoutContextType | null>();
+  const navigate = useNavigate();
+
+  const summary = props.summary !== undefined ? props.summary : (context?.summary ?? null);
+  const onOpenOrderModal = props.onOpenOrderModal || context?.openOrderModal || (() => {});
+  const onNavigateToOrders = props.onNavigateToOrders || (() => navigate('/orders'));
   const [trends, setTrends] = useState<DashboardTrend | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<7 | 30 | 90>(7);
   const [recentOverdue, setRecentOverdue] = useState<Order[]>([]);
@@ -45,14 +49,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   // SVG Chart Dimensions & Calculations
   const chartPoints = trends?.points || [];
-  const maxVal = Math.max(...chartPoints.map((p) => Math.max(p.overdueCount, p.fulfilledCount, 1)), 5);
+  const maxVal = Math.max(
+    ...chartPoints.map((p) => Math.max(p.overdueCount, p.fulfilledCount, 1)),
+    5
+  );
   const chartWidth = 720;
   const chartHeight = 220;
   const paddingX = 40;
   const paddingY = 30;
 
   const getCoordinates = (index: number, value: number) => {
-    const x = paddingX + (index / Math.max(1, chartPoints.length - 1)) * (chartWidth - paddingX * 2);
+    const x =
+      paddingX + (index / Math.max(1, chartPoints.length - 1)) * (chartWidth - paddingX * 2);
     const y = chartHeight - paddingY - (value / maxVal) * (chartHeight - paddingY * 2);
     return { x, y };
   };
@@ -79,7 +87,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="metric-card">
           <div className="metric-card-top">
             <span className="metric-label">Total Monitored Orders</span>
-            <div className="metric-icon-box" style={{ background: 'var(--primary-subtle)', color: 'var(--primary)' }}>
+            <div
+              className="metric-icon-box"
+              style={{ background: 'var(--primary-subtle)', color: 'var(--primary)' }}
+            >
               <Package size={20} />
             </div>
           </div>
@@ -98,12 +109,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="metric-card">
           <div className="metric-card-top">
             <span className="metric-label">Overdue Orders</span>
-            <div className="metric-icon-box" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+            <div
+              className="metric-icon-box"
+              style={{ background: 'var(--critical-bg)', color: 'var(--critical)' }}
+            >
               <AlertOctagon size={20} />
             </div>
           </div>
           <div className="metric-value-row">
-            <span className="metric-value" style={{ color: (summary?.overdueOrders ?? 0) > 0 ? '#ef4444' : 'inherit' }}>
+            <span
+              className="metric-value"
+              style={{ color: (summary?.overdueOrders ?? 0) > 0 ? 'var(--critical)' : 'inherit' }}
+            >
               {summary?.overdueOrders ?? '—'}
             </span>
             {(summary?.overdueOrders ?? 0) > 0 && (
@@ -112,42 +129,56 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </span>
             )}
           </div>
-          <span className="metric-desc">Exceeding configured {summary?.monitoringStatus.thresholdHours || 24}h SLA deadline</span>
+          <span className="metric-desc">
+            Exceeding configured {summary?.monitoringStatus.thresholdHours || 24}h SLA deadline
+          </span>
         </div>
 
         {/* Metric 3: Pending Fulfillment */}
         <div className="metric-card">
           <div className="metric-card-top">
             <span className="metric-label">Pending Fulfillment</span>
-            <div className="metric-icon-box" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+            <div
+              className="metric-icon-box"
+              style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}
+            >
               <Clock size={20} />
             </div>
           </div>
           <div className="metric-value-row">
             <span className="metric-value">{summary?.pendingFulfillment ?? '—'}</span>
           </div>
-          <span className="metric-desc">Unfulfilled and partially fulfilled customer shipments</span>
+          <span className="metric-desc">
+            Unfulfilled and partially fulfilled customer shipments
+          </span>
         </div>
 
         {/* Metric 4: On-Time Fulfillment Rate */}
         <div className="metric-card">
           <div className="metric-card-top">
             <span className="metric-label">On-Time Fulfillment Rate</span>
-            <div className="metric-icon-box" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+            <div
+              className="metric-icon-box"
+              style={{ background: 'var(--success-bg)', color: 'var(--success)' }}
+            >
               <TrendingUp size={20} />
             </div>
           </div>
           <div className="metric-value-row">
-            <span className="metric-value" style={{ color: '#10b981' }}>
+            <span className="metric-value" style={{ color: 'var(--success)' }}>
               {summary?.onTimeRate !== undefined ? `${summary.onTimeRate}%` : '—'}
             </span>
           </div>
-          <span className="metric-desc">Eligible orders dispatched prior to configured deadline</span>
+          <span className="metric-desc">
+            Eligible orders dispatched prior to configured deadline
+          </span>
         </div>
       </section>
 
       {/* Monitoring Status & Trend Section */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+      <div
+        style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', marginBottom: '2rem' }}
+      >
         {/* Trend Chart Panel */}
         <div className="panel-card">
           <div className="panel-header">
@@ -214,23 +245,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 );
               })}
 
-              {/* Fulfilled line (Green) */}
+              {/* Fulfilled line (Shopify Emerald) */}
               {fulfilledPathData && (
                 <path
                   d={fulfilledPathData}
                   fill="none"
-                  stroke="#10b981"
+                  stroke="#00a47c"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                 />
               )}
 
-              {/* Overdue line (Red) */}
+              {/* Overdue line (Shopify Crimson) */}
               {overduePathData && (
                 <path
                   d={overduePathData}
                   fill="none"
-                  stroke="#ef4444"
+                  stroke="#eb5757"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                 />
@@ -246,7 +277,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       cx={overdueCoord.x}
                       cy={overdueCoord.y}
                       r="4"
-                      fill="#ef4444"
+                      fill="#eb5757"
                       stroke="var(--bg-card)"
                       strokeWidth="2"
                     >
@@ -256,7 +287,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       cx={fulfilledCoord.x}
                       cy={fulfilledCoord.y}
                       r="4"
-                      fill="#10b981"
+                      fill="#00a47c"
                       stroke="var(--bg-card)"
                       strokeWidth="2"
                     >
@@ -291,11 +322,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <span style={{ width: '12px', height: '3px', background: '#ef4444', borderRadius: '2px' }} />
+              <span
+                style={{ width: '12px', height: '3px', background: '#eb5757', borderRadius: '2px' }}
+              />
               <span style={{ color: 'var(--text-secondary)' }}>Overdue Orders</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <span style={{ width: '12px', height: '3px', background: '#10b981', borderRadius: '2px' }} />
+              <span
+                style={{ width: '12px', height: '3px', background: '#00a47c', borderRadius: '2px' }}
+              />
               <span style={{ color: 'var(--text-secondary)' }}>Fulfilled Orders</span>
             </div>
           </div>
@@ -332,17 +367,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <Activity size={22} />
             </div>
             <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <div
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                }}
+              >
                 Engine Status
               </div>
               <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                {summary?.monitoringStatus.isShopifyConnected ? 'Shopify App Connected' : 'Sandbox Demo Mode'}
+                {summary?.monitoringStatus.isShopifyConnected
+                  ? 'Shopify App Connected'
+                  : 'Sandbox Demo Mode'}
               </div>
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <div
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+              }}
+            >
               Active SLA Threshold
             </div>
             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#38bdf8' }}>
@@ -351,16 +400,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <div
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+              }}
+            >
               Email Notifications
             </div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: summary?.monitoringStatus.emailEnabled ? '#10b981' : 'var(--text-muted)' }}>
+            <div
+              style={{
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                color: summary?.monitoringStatus.emailEnabled ? '#10b981' : 'var(--text-muted)',
+              }}
+            >
               {summary?.monitoringStatus.emailEnabled ? 'Enabled (Alerts Active)' : 'Disabled'}
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <div
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+              }}
+            >
               Last Synchronized
             </div>
             <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
@@ -415,7 +482,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 {recentOverdue.map((order) => (
                   <tr key={order.id}>
                     <td>
-                      <span style={{ fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer' }} onClick={() => onOpenOrderModal(order)}>
+                      <span
+                        style={{ fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer' }}
+                        onClick={() => onOpenOrderModal(order)}
+                      >
                         {order.orderNumber}
                       </span>
                     </td>
@@ -429,8 +499,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       })}
                     </td>
                     <td>
-                      <span className={`badge ${order.fulfillmentStatus === 'partial' ? 'badge-warning' : 'badge-critical'}`}>
-                        {order.fulfillmentStatus === 'partial' ? 'Partially Fulfilled' : 'Unfulfilled'}
+                      <span
+                        className={`badge ${order.fulfillmentStatus === 'partial' ? 'badge-warning' : 'badge-critical'}`}
+                      >
+                        {order.fulfillmentStatus === 'partial'
+                          ? 'Partially Fulfilled'
+                          : 'Unfulfilled'}
                       </span>
                     </td>
                     <td>
@@ -438,9 +512,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         +{Math.floor(order.overdueMinutes / 60)}h {order.overdueMinutes % 60}m
                       </span>
                     </td>
-                    <td style={{ fontWeight: 600 }}>
-                      ${order.totalAmount.toFixed(2)}
-                    </td>
+                    <td style={{ fontWeight: 600 }}>${order.totalAmount.toFixed(2)}</td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
                         <button
