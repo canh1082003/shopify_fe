@@ -32,43 +32,38 @@ class ApiClient {
   private tokenPromise: Promise<string> | null = null;
 
   constructor() {
-    this.token = localStorage.getItem('ow_auth_token');
-    this.refreshTokenValue = localStorage.getItem('ow_refresh_token');
-    const savedExp = localStorage.getItem('ow_token_exp');
-    if (savedExp) {
-      this.tokenExpiry = parseInt(savedExp, 10);
+    // Purge any legacy tokens from localStorage to prevent XSS exposure
+    try {
+      localStorage.removeItem('ow_auth_token');
+      localStorage.removeItem('ow_refresh_token');
+      localStorage.removeItem('ow_token_exp');
+    } catch {
+      // Ignore if localStorage is restricted
     }
   }
 
   /**
-   * Save token pair to in-memory state and localStorage
+   * Save token pair to in-memory state
    */
   private storeTokens(token: string, refreshToken?: string, expiresIn?: number): void {
     this.token = token;
-    localStorage.setItem('ow_auth_token', token);
 
     if (refreshToken) {
       this.refreshTokenValue = refreshToken;
-      localStorage.setItem('ow_refresh_token', refreshToken);
     }
 
     if (expiresIn) {
-      const expiry = Math.floor(Date.now() / 1000) + expiresIn;
-      this.tokenExpiry = expiry;
-      localStorage.setItem('ow_token_exp', String(expiry));
+      this.tokenExpiry = Math.floor(Date.now() / 1000) + expiresIn;
     }
   }
 
   /**
-   * Clear all authentication tokens from storage
+   * Clear all authentication tokens from in-memory state
    */
   public clearTokens(): void {
     this.token = null;
     this.refreshTokenValue = null;
     this.tokenExpiry = 0;
-    localStorage.removeItem('ow_auth_token');
-    localStorage.removeItem('ow_refresh_token');
-    localStorage.removeItem('ow_token_exp');
   }
 
   /**
@@ -127,13 +122,10 @@ class ApiClient {
       }
 
       this.storeTokens(json.data.token, json.data.refreshToken, json.data.expiresIn);
-      toast.info('Phiên làm việc đã được gia hạn tự động', {
-        description: json.message || 'Token refreshed successfully via Backend',
-      });
       return json.data.token;
-    } catch {
-      this.clearTokens();
-      return this.fetchToken();
+    } catch (err) {
+      // Lỗi tạm thời (mạng/timeout/body không phải JSON): giữ token, ném lỗi cho caller
+      throw err instanceof Error ? err : new Error('Không thể làm mới token');
     }
   }
 
@@ -187,9 +179,17 @@ class ApiClient {
   /**
    * Centralized HTTP Request wrapper with Bearer token, auto 401 recovery, and toast integration
    */
-  private async request<T>(endpoint: string, options?: RequestInit, isRetry = false): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    options?: RequestInit,
+    isRetry = false,
+    silent = false
+  ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    const isPublicEndpoint = endpoint.startsWith('/auth/token') || endpoint.startsWith('/health') || endpoint.startsWith('/auth/refresh');
+    const isPublicEndpoint =
+      endpoint.startsWith('/auth/token') ||
+      endpoint.startsWith('/health') ||
+      endpoint.startsWith('/auth/refresh');
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -212,7 +212,7 @@ class ApiClient {
         console.warn('[ApiClient] 401 Unauthorized encountered. Attempting token refresh...');
         const newToken = await this.refreshAccessToken();
         if (newToken) {
-          return this.request<T>(endpoint, options, true);
+          return this.request<T>(endpoint, options, true, silent);
         }
       }
 
@@ -221,29 +221,35 @@ class ApiClient {
       if (!response.ok || !json.success) {
         const feedback = getStatusFeedback(response.status);
         const errorMsg = json.message || feedback.defaultMessage;
-        
-        // Show rich toast for API errors
-        toast.error(feedback.title, {
-          description: errorMsg,
-        });
 
-        throw new Error(errorMsg);
+        // Show rich toast for API errors only if not in silent mode
+        if (!silent) {
+          toast.error(feedback.title, {
+            description: errorMsg,
+          });
+        }
+
+        const apiErr = new Error(errorMsg);
+        (apiErr as Error & { handled?: boolean }).handled = true;
+        throw apiErr;
       }
 
       return json.data;
     } catch (err: unknown) {
-      if (err instanceof Error) {
+      if (err instanceof Error && (err as Error & { handled?: boolean }).handled) {
         throw err;
       }
       const networkMsg = 'Không thể kết nối đến máy chủ Order Watchdog Backend (Network Error)';
-      toast.error('Lỗi kết nối mạng', { description: networkMsg });
+      if (!silent) {
+        toast.error('Lỗi kết nối mạng', { description: networkMsg });
+      }
       throw new Error(networkMsg);
     }
   }
 
   // Dashboard APIs
-  public async getDashboardSummary(): Promise<DashboardSummary> {
-    return this.request<DashboardSummary>('/dashboard/summary');
+  public async getDashboardSummary(silent = true): Promise<DashboardSummary> {
+    return this.request<DashboardSummary>('/dashboard/summary', undefined, false, silent);
   }
 
   public async getDashboardTrends(days: 7 | 30 | 90 = 7): Promise<DashboardTrend> {
@@ -273,8 +279,8 @@ class ApiClient {
     return this.request<PaginatedResult<Order>>(`/orders${qs}`);
   }
 
-  public async getOrderById(id: string): Promise<Order> {
-    return this.request<Order>(`/orders/${id}`);
+  public async getOrderById(id: string, silent = true): Promise<Order> {
+    return this.request<Order>(`/orders/${id}`, undefined, false, silent);
   }
 
   // Alerts APIs
@@ -311,13 +317,9 @@ class ApiClient {
   }
 
   public async acknowledgeAlert(alertId: string): Promise<Alert> {
-    const res = await this.request<Alert>(`/alerts/${alertId}/acknowledge`, {
+    return this.request<Alert>(`/alerts/${alertId}/acknowledge`, {
       method: 'PATCH',
     });
-    toast.success('Đã xác nhận cảnh báo', {
-      description: `Đơn hàng đã được ghi nhận. Hệ thống vẫn tiếp tục giám sát SLA đến khi hoàn tất giao hàng.`,
-    });
-    return res;
   }
 
   // Settings APIs
@@ -326,26 +328,18 @@ class ApiClient {
   }
 
   public async updateSettings(settings: Partial<Settings>): Promise<Settings> {
-    const res = await this.request<Settings>('/settings', {
+    return this.request<Settings>('/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
     });
-    toast.success('Cập nhật cài đặt thành công', {
-      description: 'Quy tắc SLA và thông báo email đã được lưu và áp dụng cho toàn bộ đơn hàng.',
-    });
-    return res;
   }
 
   // Notifications API
   public async sendTestNotification(email?: string): Promise<{ success: boolean; isSimulated: boolean; message: string }> {
-    const res = await this.request<{ success: boolean; isSimulated: boolean; message: string }>('/notifications/test', {
+    return this.request<{ success: boolean; isSimulated: boolean; message: string }>('/notifications/test', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
-    toast.success('Gửi email thông báo mẫu thành công', {
-      description: res.message,
-    });
-    return res;
   }
 
   // Shopify Integration APIs
@@ -354,13 +348,9 @@ class ApiClient {
   }
 
   public async syncShopify(): Promise<{ syncedCount: number; message: string }> {
-    const res = await this.request<{ syncedCount: number; message: string }>('/integrations/shopify/sync', {
+    return this.request<{ syncedCount: number; message: string }>('/integrations/shopify/sync', {
       method: 'POST',
     });
-    toast.success('Đồng bộ Shopify thành công', {
-      description: res.message,
-    });
-    return res;
   }
 }
 

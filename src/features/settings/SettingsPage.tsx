@@ -68,7 +68,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
       setTokenInfo(res);
       if (res.valid) {
         toast.success('Xác thực Token thành công', {
-          description: `Shop: ${res.shop?.domain || 'Shopify'} | Thời hạn còn lại: ${res.remainingSeconds} giây`,
+          description: `Shop: ${res.shop?.domain || 'Shopify'} | Thời hạn còn lại: ${res.remainingSeconds ?? '—'} giây`,
         });
       } else {
         toast.error('Token không hợp lệ hoặc đã hết hạn', {
@@ -89,8 +89,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
       await api.refreshAccessToken();
       const res = await api.verifyToken();
       setTokenInfo(res);
+      if (!res.valid) {
+        toast.error('Token vẫn không hợp lệ sau khi làm mới', {
+          description: res.error || 'Vui lòng thử lại.',
+        });
+        return;
+      }
       toast.success('Làm mới token thành công', {
-        description: `Backend đã cấp cặp Access + Refresh token mới. Thời hạn: ${res.remainingSeconds} giây.`,
+        description: `Thời hạn: ${res.remainingSeconds ?? '—'} giây.`,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Không thể làm mới token';
