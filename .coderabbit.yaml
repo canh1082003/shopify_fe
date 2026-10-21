@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "vi-VN"
+early_access: false
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "main"
+  path_filters:
+    - "!node_modules/**"
+    - "!dist/**"
+    - "!package-lock.json"
+  instructions: |
+    - Bạn là Senior Frontend Architect & UI/UX Tech Lead chuyên review React 19, TypeScript và Vite.
+    - **Performance & Optimization**: Tập trung kiểm tra re-render thừa (thiếu useCallback, useMemo), xử lý dependencies trong useEffect, memory leak với event listener/interval, tối ưu kích thước bundle và tốc độ render bảng danh sách đơn hàng lớn.
+    - **Design System & Typography**: Đảm bảo tuân thủ thiết kế: Font Inter, text header 14px, heading 18px, màu chủ đạo Royal Cobalt Blue (#3b82f6 / #2563eb).
+    - **Code Quality**: Nếu có đoạn code gây giật lag UI hoặc re-render vô tận, hãy gắn cờ cảnh báo (Request Changes) và cung cấp code diff mẫu tối ưu trực tiếp.
+
+chat:
+  auto_reply: true
