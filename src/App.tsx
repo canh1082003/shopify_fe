@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Toaster, toast } from 'sonner';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { DashboardPage } from './features/dashboard/DashboardPage';
@@ -6,9 +7,8 @@ import { OrdersPage } from './features/orders/OrdersPage';
 import { AlertsPage } from './features/alerts/AlertsPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { OrderDetailsModal } from './components/OrderDetailsModal';
-import { ToastContainer } from './components/Toast';
 import { api } from './services/api';
-import { NavigationTab, DashboardSummary, Order, ToastMessage } from './types';
+import { NavigationTab, DashboardSummary, Order } from './types';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
@@ -18,7 +18,6 @@ export const App: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Apply theme to HTML tag
@@ -31,18 +30,16 @@ export const App: React.FC = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  // Toast Helper
+  // Toast Helper utilizing sonner
   const addToast = useCallback((type: 'success' | 'error' | 'info', title: string, message: string) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, type, title, message }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4500);
+    if (type === 'success') {
+      toast.success(title, { description: message });
+    } else if (type === 'error') {
+      toast.error(title, { description: message });
+    } else {
+      toast.info(title, { description: message });
+    }
   }, []);
-
-  const dismissToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
 
   // Fetch Dashboard Summary
   const fetchSummary = useCallback(async () => {
@@ -66,10 +63,10 @@ export const App: React.FC = () => {
       setIsSyncing(true);
       const res = await api.syncShopify();
       await fetchSummary();
-      addToast('success', 'Sync Complete', res.message);
+      toast.success('Đồng bộ hoàn tất', { description: res.message });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Sync failed';
-      addToast('error', 'Sync Failed', msg);
+      const msg = err instanceof Error ? err.message : 'Đồng bộ thất bại';
+      toast.error('Lỗi đồng bộ', { description: msg });
     } finally {
       setIsSyncing(false);
     }
@@ -80,13 +77,27 @@ export const App: React.FC = () => {
     try {
       const order = await api.getOrderById(orderId);
       setSelectedOrder(order);
-    } catch (err) {
-      addToast('error', 'Error', 'Could not retrieve order details');
+    } catch {
+      toast.error('Lỗi truy vấn', { description: 'Không tìm thấy chi tiết đơn hàng' });
     }
   };
 
   return (
     <div className="saas-layout">
+      {/* Interactive Sonner Toast Notification Center */}
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        theme={theme}
+        toastOptions={{
+          style: {
+            fontFamily: 'var(--font-body)',
+            fontSize: '14px',
+          },
+        }}
+      />
+
       {/* Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
@@ -139,9 +150,6 @@ export const App: React.FC = () => {
         order={selectedOrder}
         onClose={() => setSelectedOrder(null)}
       />
-
-      {/* Global Toast Notifications */}
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 };

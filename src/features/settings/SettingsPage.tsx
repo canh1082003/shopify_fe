@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Info, Send } from 'lucide-react';
+import { Save, Info, Send, Key, ShieldCheck, RefreshCw } from 'lucide-react';
 import { Settings, ShopifyIntegrationStatus } from '../../types';
-import { api } from '../../services/api';
+import { api, TokenStatusInfo } from '../../services/api';
+import { toast } from 'sonner';
 
 interface SettingsPageProps {
   onToast: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
@@ -13,6 +14,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [tokenInfo, setTokenInfo] = useState<TokenStatusInfo | null>(null);
+  const [isVerifyingToken, setIsVerifyingToken] = useState(false);
+  const [isRefreshingToken, setIsRefreshingToken] = useState(false);
 
   // Form State
   const [thresholdPreset, setThresholdPreset] = useState<'12' | '24' | '48' | 'custom'>('24');
@@ -26,12 +30,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
     const loadSettings = async () => {
       try {
         setIsLoading(true);
-        const [settData, integData] = await Promise.all([
+        const [settData, integData, tokData] = await Promise.all([
           api.getSettings(),
           api.getShopifyStatus(),
+          api.verifyToken().catch(() => null),
         ]);
         setSettings(settData);
         setIntegration(integData);
+        if (tokData) setTokenInfo(tokData);
 
         // Populate form
         const th = settData.overdueThresholdHours;
@@ -54,6 +60,45 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
     };
     loadSettings();
   }, [onToast]);
+
+  const handleVerifyToken = async () => {
+    try {
+      setIsVerifyingToken(true);
+      const res = await api.verifyToken();
+      setTokenInfo(res);
+      if (res.valid) {
+        toast.success('Xác thực Token thành công', {
+          description: `Shop: ${res.shop?.domain || 'Shopify'} | Thời hạn còn lại: ${res.remainingSeconds} giây`,
+        });
+      } else {
+        toast.error('Token không hợp lệ hoặc đã hết hạn', {
+          description: res.error || 'Vui lòng bấm làm mới token.',
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Lỗi kiểm tra token';
+      toast.error('Lỗi kiểm tra token', { description: msg });
+    } finally {
+      setIsVerifyingToken(false);
+    }
+  };
+
+  const handleRefreshToken = async () => {
+    try {
+      setIsRefreshingToken(true);
+      await api.refreshAccessToken();
+      const res = await api.verifyToken();
+      setTokenInfo(res);
+      toast.success('Làm mới token thành công', {
+        description: `Backend đã cấp cặp Access + Refresh token mới. Thời hạn: ${res.remainingSeconds} giây.`,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể làm mới token';
+      toast.error('Lỗi làm mới token', { description: msg });
+    } finally {
+      setIsRefreshingToken(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -377,6 +422,102 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
           </button>
         </div>
       </form>
+
+      {/* Token Authentication & Refresh Diagnostics Panel */}
+      <div className="panel-card" style={{ marginTop: '2rem' }}>
+        <div className="panel-header">
+          <div>
+            <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Key size={18} color="var(--primary)" /> Token Authentication &amp; Session Diagnostics
+            </h3>
+            <p className="panel-subtitle">
+              Kiểm tra tính hợp lệ của JWT token, cơ chế tự động refetch / refresh token và nhận diện HTTP Status
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleVerifyToken}
+              disabled={isVerifyingToken}
+              title="Gửi token hiện tại lên BE /api/auth/verify để kiểm tra"
+            >
+              <ShieldCheck size={14} />
+              <span>{isVerifyingToken ? 'Đang kiểm tra...' : 'Kiểm tra Token (Verify)'}</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleRefreshToken}
+              disabled={isRefreshingToken}
+              title="Gọi BE /api/auth/refresh để lấy Access Token mới"
+            >
+              <RefreshCw size={14} className={isRefreshingToken ? 'spin-animation' : ''} />
+              <span>{isRefreshingToken ? 'Đang làm mới...' : 'Làm mới Token (Refresh)'}</span>
+            </button>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem',
+            background: 'var(--bg-card-subtle)',
+            padding: '1.25rem',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-subtle)',
+          }}
+        >
+          <div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Trạng thái Token
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', fontWeight: 700 }}>
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: tokenInfo?.valid ? 'var(--success)' : 'var(--critical)',
+                }}
+              />
+              <span style={{ color: tokenInfo?.valid ? 'var(--success)' : 'var(--critical)' }}>
+                {tokenInfo?.valid ? 'Hợp lệ & Hoạt động (Valid)' : 'Chưa xác thực hoặc đã hết hạn'}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Định dạng chuẩn
+            </span>
+            <div style={{ fontWeight: 600, marginTop: '0.25rem' }}>
+              Bearer JWT (RFC 7519 HMAC-SHA256)
+            </div>
+          </div>
+
+          <div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Thời hạn còn lại
+            </span>
+            <div style={{ fontWeight: 600, marginTop: '0.25rem' }}>
+              {tokenInfo?.remainingSeconds !== undefined
+                ? `${tokenInfo.remainingSeconds} giây (~${Math.round(tokenInfo.remainingSeconds / 60)} phút)`
+                : '—'}
+            </div>
+          </div>
+
+          <div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Tự động phục hồi khi lỗi 401
+            </span>
+            <div style={{ color: 'var(--text-link)', fontWeight: 600, marginTop: '0.25rem' }}>
+              Tự động dùng Refresh Token (Seamless Auto-Retry)
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

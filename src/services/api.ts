@@ -8,15 +8,67 @@ import {
   ApiResponse,
   ShopifyIntegrationStatus,
 } from '../types';
+import { HttpStatus, getStatusFeedback } from '../constants/httpStatus';
+import { toast } from 'sonner';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
+export interface TokenStatusInfo {
+  valid: boolean;
+  shop?: {
+    id: string;
+    domain: string;
+    name: string;
+  };
+  expiresAt?: string | null;
+  remainingSeconds?: number;
+  error?: string;
+}
+
 class ApiClient {
   private token: string | null = null;
+  private refreshTokenValue: string | null = null;
+  private tokenExpiry: number = 0; // unix seconds
   private tokenPromise: Promise<string> | null = null;
 
   constructor() {
     this.token = localStorage.getItem('ow_auth_token');
+    this.refreshTokenValue = localStorage.getItem('ow_refresh_token');
+    const savedExp = localStorage.getItem('ow_token_exp');
+    if (savedExp) {
+      this.tokenExpiry = parseInt(savedExp, 10);
+    }
+  }
+
+  /**
+   * Save token pair to in-memory state and localStorage
+   */
+  private storeTokens(token: string, refreshToken?: string, expiresIn?: number): void {
+    this.token = token;
+    localStorage.setItem('ow_auth_token', token);
+
+    if (refreshToken) {
+      this.refreshTokenValue = refreshToken;
+      localStorage.setItem('ow_refresh_token', refreshToken);
+    }
+
+    if (expiresIn) {
+      const expiry = Math.floor(Date.now() / 1000) + expiresIn;
+      this.tokenExpiry = expiry;
+      localStorage.setItem('ow_token_exp', String(expiry));
+    }
+  }
+
+  /**
+   * Clear all authentication tokens from storage
+   */
+  public clearTokens(): void {
+    this.token = null;
+    this.refreshTokenValue = null;
+    this.tokenExpiry = 0;
+    localStorage.removeItem('ow_auth_token');
+    localStorage.removeItem('ow_refresh_token');
+    localStorage.removeItem('ow_token_exp');
   }
 
   /**
@@ -29,22 +81,98 @@ class ApiClient {
       body: JSON.stringify({ shopDomain }),
     });
 
-    const json: ApiResponse<{ token: string }> = await res.json();
+    const json: ApiResponse<{
+      token: string;
+      refreshToken: string;
+      expiresIn: number;
+    }> = await res.json();
+
     if (!res.ok || !json.success || !json.data?.token) {
-      throw new Error(json.message || 'Failed to authenticate with backend');
+      const feedback = getStatusFeedback(res.status);
+      const msg = json.message || feedback.defaultMessage;
+      toast.error(feedback.title, { description: msg });
+      throw new Error(msg);
     }
 
-    this.token = json.data.token;
-    localStorage.setItem('ow_auth_token', this.token);
-    return this.token;
+    this.storeTokens(json.data.token, json.data.refreshToken, json.data.expiresIn);
+    return json.data.token;
+  }
+
+  /**
+   * Refresh an access token using the long-lived refresh token
+   */
+  public async refreshAccessToken(): Promise<string> {
+    if (!this.refreshTokenValue) {
+      // If no refresh token, obtain new session
+      return this.fetchToken();
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: this.refreshTokenValue }),
+      });
+
+      const json: ApiResponse<{
+        token: string;
+        refreshToken: string;
+        expiresIn: number;
+      }> = await res.json();
+
+      if (!res.ok || !json.success || !json.data?.token) {
+        console.warn('[ApiClient] Refresh token invalid or expired. Fetching fresh token...');
+        this.clearTokens();
+        return this.fetchToken();
+      }
+
+      this.storeTokens(json.data.token, json.data.refreshToken, json.data.expiresIn);
+      toast.info('Phiên làm việc đã được gia hạn tự động', {
+        description: json.message || 'Token refreshed successfully via Backend',
+      });
+      return json.data.token;
+    } catch {
+      this.clearTokens();
+      return this.fetchToken();
+    }
+  }
+
+  /**
+   * Explicitly verify the current Bearer token status with Backend
+   */
+  public async verifyToken(): Promise<TokenStatusInfo> {
+    const token = await this.getValidToken();
+    const res = await fetch(`${API_BASE_URL}/auth/verify`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const json: ApiResponse<TokenStatusInfo> = await res.json();
+    return json.data || { valid: false, error: json.message };
   }
 
   /**
    * Ensure a valid token is available before making protected requests
    */
   private async getValidToken(): Promise<string> {
-    if (this.token) {
+    const now = Math.floor(Date.now() / 1000);
+
+    // If token exists and is valid (with 30s safety margin)
+    if (this.token && (!this.tokenExpiry || this.tokenExpiry > now + 30)) {
       return this.token;
+    }
+
+    // If token is expiring or expired, refresh proactively
+    if (this.refreshTokenValue && this.tokenExpiry && this.tokenExpiry <= now + 30) {
+      if (!this.tokenPromise) {
+        this.tokenPromise = this.refreshAccessToken().finally(() => {
+          this.tokenPromise = null;
+        });
+      }
+      return this.tokenPromise;
     }
 
     if (!this.tokenPromise) {
@@ -57,11 +185,11 @@ class ApiClient {
   }
 
   /**
-   * Centralized HTTP Request wrapper with Bearer token authentication
+   * Centralized HTTP Request wrapper with Bearer token, auto 401 recovery, and toast integration
    */
   private async request<T>(endpoint: string, options?: RequestInit, isRetry = false): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    const isPublicEndpoint = endpoint.startsWith('/auth/token') || endpoint.startsWith('/health');
+    const isPublicEndpoint = endpoint.startsWith('/auth/token') || endpoint.startsWith('/health') || endpoint.startsWith('/auth/refresh');
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -79,20 +207,27 @@ class ApiClient {
         headers,
       });
 
-      // Handle token expiration or invalidation (401)
-      if (response.status === 401 && !isPublicEndpoint && !isRetry) {
-        console.warn('[ApiClient] 401 Unauthorized encountered. Refreshing authentication token...');
-        this.token = null;
-        localStorage.removeItem('ow_auth_token');
-        await this.getValidToken();
-        // Retry request with fresh token
-        return this.request<T>(endpoint, options, true);
+      // Handle 401 Unauthorized (token expired or invalid)
+      if (response.status === HttpStatus.UNAUTHORIZED && !isPublicEndpoint && !isRetry) {
+        console.warn('[ApiClient] 401 Unauthorized encountered. Attempting token refresh...');
+        const newToken = await this.refreshAccessToken();
+        if (newToken) {
+          return this.request<T>(endpoint, options, true);
+        }
       }
 
       const json: ApiResponse<T> = await response.json();
 
       if (!response.ok || !json.success) {
-        throw new Error(json.message || `Request failed with HTTP status ${response.status}`);
+        const feedback = getStatusFeedback(response.status);
+        const errorMsg = json.message || feedback.defaultMessage;
+        
+        // Show rich toast for API errors
+        toast.error(feedback.title, {
+          description: errorMsg,
+        });
+
+        throw new Error(errorMsg);
       }
 
       return json.data;
@@ -100,7 +235,9 @@ class ApiClient {
       if (err instanceof Error) {
         throw err;
       }
-      throw new Error('Network error: Unable to communicate with Order Watchdog backend');
+      const networkMsg = 'Không thể kết nối đến máy chủ Order Watchdog Backend (Network Error)';
+      toast.error('Lỗi kết nối mạng', { description: networkMsg });
+      throw new Error(networkMsg);
     }
   }
 
@@ -174,9 +311,13 @@ class ApiClient {
   }
 
   public async acknowledgeAlert(alertId: string): Promise<Alert> {
-    return this.request<Alert>(`/alerts/${alertId}/acknowledge`, {
+    const res = await this.request<Alert>(`/alerts/${alertId}/acknowledge`, {
       method: 'PATCH',
     });
+    toast.success('Đã xác nhận cảnh báo', {
+      description: `Đơn hàng đã được ghi nhận. Hệ thống vẫn tiếp tục giám sát SLA đến khi hoàn tất giao hàng.`,
+    });
+    return res;
   }
 
   // Settings APIs
@@ -185,18 +326,26 @@ class ApiClient {
   }
 
   public async updateSettings(settings: Partial<Settings>): Promise<Settings> {
-    return this.request<Settings>('/settings', {
+    const res = await this.request<Settings>('/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
     });
+    toast.success('Cập nhật cài đặt thành công', {
+      description: 'Quy tắc SLA và thông báo email đã được lưu và áp dụng cho toàn bộ đơn hàng.',
+    });
+    return res;
   }
 
   // Notifications API
   public async sendTestNotification(email?: string): Promise<{ success: boolean; isSimulated: boolean; message: string }> {
-    return this.request<{ success: boolean; isSimulated: boolean; message: string }>('/notifications/test', {
+    const res = await this.request<{ success: boolean; isSimulated: boolean; message: string }>('/notifications/test', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
+    toast.success('Gửi email thông báo mẫu thành công', {
+      description: res.message,
+    });
+    return res;
   }
 
   // Shopify Integration APIs
@@ -205,9 +354,13 @@ class ApiClient {
   }
 
   public async syncShopify(): Promise<{ syncedCount: number; message: string }> {
-    return this.request<{ syncedCount: number; message: string }>('/integrations/shopify/sync', {
+    const res = await this.request<{ syncedCount: number; message: string }>('/integrations/shopify/sync', {
       method: 'POST',
     });
+    toast.success('Đồng bộ Shopify thành công', {
+      description: res.message,
+    });
+    return res;
   }
 }
 
