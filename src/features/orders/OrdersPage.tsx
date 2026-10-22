@@ -1,17 +1,30 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Eye, ExternalLink, ChevronLeft, ChevronRight, AlertTriangle, PackageCheck, Clock } from 'lucide-react';
-import { Order } from '../../types';
-import { api } from '../../services/api';
+import { useOutletContext } from 'react-router-dom';
+import {
+  Search,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  XCircle,
+  Info,
+} from 'lucide-react';
+import { Order, FulfillmentStatus } from '../../types';
+import { api } from '../../api';
+import { MainLayoutContextType } from '../../layouts/MainLayout';
+import { useTranslation } from '../../i18n';
 
-interface OrdersPageProps {
-  onOpenOrderModal: (order: Order) => void;
-}
+export const OrdersPage: React.FC = () => {
+  const { t } = useTranslation();
+  const context = useOutletContext<MainLayoutContextType | null>();
+  const openOrderModal = context?.openOrderModal || (() => {});
 
-export const OrdersPage: React.FC<OrdersPageProps> = ({ onOpenOrderModal }) => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'overdue' | 'pending' | 'fulfilled'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | FulfillmentStatus>('all');
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'overdue_desc'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'total_desc'>('newest');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -20,7 +33,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ onOpenOrderModal }) => {
   const fetchOrders = useCallback(async () => {
     try {
       setIsLoading(true);
-      const res = await api.getOrders({
+      const res = await api.orders.getOrders({
         status: statusFilter,
         search,
         sortBy,
@@ -41,225 +54,269 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ onOpenOrderModal }) => {
     fetchOrders();
   }, [fetchOrders]);
 
-  const handleTabChange = (status: 'all' | 'overdue' | 'pending' | 'fulfilled') => {
+  const handleTabChange = (status: 'all' | FulfillmentStatus) => {
     setStatusFilter(status);
     setPage(1);
   };
 
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setPage(1);
+  const getFulfillmentBadge = (status: FulfillmentStatus) => {
+    switch (status) {
+      case 'fulfilled':
+        return (
+          <span className="badge badge-healthy">
+            <CheckCircle size={12} /> Fulfilled
+          </span>
+        );
+      case 'partial':
+        return (
+          <span className="badge badge-restock_soon">
+            <Clock size={12} /> Partially Fulfilled
+          </span>
+        );
+      case 'unfulfilled':
+        return (
+          <span className="badge badge-low_stock">
+            <AlertTriangle size={12} /> Unfulfilled
+          </span>
+        );
+      case 'cancelled':
+        return (
+          <span className="badge badge-out_of_stock">
+            <XCircle size={12} /> Canceled
+          </span>
+        );
+      default:
+        return <span className="badge badge-untracked">{status}</span>;
+    }
   };
 
   return (
     <div>
-      {/* Controls: Filter Tabs & Search Bar */}
-      <div className="filter-tabs-row">
+      {/* Notice Banner */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '12px 16px',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: '20px',
+          fontSize: '13px',
+          color: 'var(--text-main)',
+        }}
+      >
+        <Info size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+        <span>{t('orders.readOnlyNotice')}</span>
+      </div>
+
+      {/* Controls Bar */}
+      <div className="controls-bar">
+        {/* Fulfillment Tabs */}
         <div className="tabs-group">
           <button
-            className={`tab-btn ${statusFilter === 'all' ? 'active' : ''}`}
+            className={`tab-pill ${statusFilter === 'all' ? 'active' : ''}`}
             onClick={() => handleTabChange('all')}
           >
-            All Orders
+            {t('orders.filterAll')}
           </button>
           <button
-            className={`tab-btn ${statusFilter === 'overdue' ? 'active' : ''}`}
-            onClick={() => handleTabChange('overdue')}
+            className={`tab-pill ${statusFilter === 'unfulfilled' ? 'active' : ''}`}
+            onClick={() => handleTabChange('unfulfilled')}
           >
-            Overdue
+            {t('orders.filterUnfulfilled')}
           </button>
           <button
-            className={`tab-btn ${statusFilter === 'pending' ? 'active' : ''}`}
-            onClick={() => handleTabChange('pending')}
+            className={`tab-pill ${statusFilter === 'partial' ? 'active' : ''}`}
+            onClick={() => handleTabChange('partial')}
           >
-            Pending
+            {t('orders.filterPartial')}
           </button>
           <button
-            className={`tab-btn ${statusFilter === 'fulfilled' ? 'active' : ''}`}
+            className={`tab-pill ${statusFilter === 'fulfilled' ? 'active' : ''}`}
             onClick={() => handleTabChange('fulfilled')}
           >
-            Fulfilled
+            {t('orders.filterFulfilled')}
+          </button>
+          <button
+            className={`tab-pill ${statusFilter === 'cancelled' ? 'active' : ''}`}
+            onClick={() => handleTabChange('cancelled')}
+          >
+            {t('orders.filterCanceled')}
           </button>
         </div>
 
-        <div className="filter-controls-group">
-          <div className="input-search-box">
-            <Search size={15} className="input-search-icon" />
+        {/* Search & Sort */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="search-input-wrapper">
+            <Search size={16} />
             <input
               type="text"
-              placeholder="Search by order # or customer..."
+              placeholder={t('orders.searchPlaceholder')}
               value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="search-input"
             />
           </div>
 
           <select
-            className="select-dropdown"
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'overdue_desc')}
+            onChange={(e) => {
+              setSortBy(e.target.value as any);
+              setPage(1);
+            }}
+            className="search-input"
+            style={{ width: 'auto', paddingLeft: '12px', cursor: 'pointer' }}
           >
-            <option value="newest">Sort: Newest</option>
-            <option value="oldest">Sort: Oldest</option>
-            <option value="overdue_desc">Sort: Most Overdue</option>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="total_desc">Highest Amount</option>
           </select>
         </div>
       </div>
 
-      {/* Orders Table Panel */}
-      <div className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
-          <table className="data-table">
-            <thead>
+      {/* Orders Table */}
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Order Number</th>
+              <th>Customer</th>
+              <th>Created Date</th>
+              <th>Payment Status</th>
+              <th>Fulfillment Status</th>
+              <th>Total Items</th>
+              <th>Order Total</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
               <tr>
-                <th>Order</th>
-                <th>Customer</th>
-                <th>Order Date</th>
-                <th>Payment</th>
-                <th>Fulfillment</th>
-                <th>Fulfillment Deadline</th>
-                <th>Overdue Status</th>
-                <th>Total</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <td
+                  colSpan={8}
+                  style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}
+                >
+                  Loading orders from backend...
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                    Loading orders from store...
+            ) : orders.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={8}
+                  style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}
+                >
+                  No orders match the selected filter.
+                </td>
+              </tr>
+            ) : (
+              orders.map((order) => (
+                <tr
+                  key={order.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => openOrderModal(order)}
+                >
+                  <td>
+                    <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '14px' }}>
+                      {order.orderNumber}
+                    </span>
                   </td>
-                </tr>
-              ) : orders.length === 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.25rem' }}>
-                      No matching orders found
-                    </div>
-                    <p style={{ fontSize: '0.85rem' }}>
-                      Try adjusting your search criteria or switching status tabs.
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                orders.map((order) => (
-                  <tr key={order.id}>
-                    <td>
-                      <span
-                        style={{ fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer' }}
-                        onClick={() => onOpenOrderModal(order)}
-                      >
-                        {order.orderNumber}
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 600 }}>
+                        {order.customerName || 'Anonymous Customer'}
                       </span>
-                    </td>
-                    <td>{order.customerName || 'Anonymous Customer'}</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>
-                      {new Date(order.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </td>
-                    <td>
-                      <span
-                        className="badge"
-                        style={{
-                          background: 'rgba(56, 189, 248, 0.12)',
-                          color: '#38bdf8',
-                          border: '1px solid rgba(56, 189, 248, 0.3)',
-                          textTransform: 'capitalize',
-                        }}
-                      >
-                        {order.financialStatus}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          order.fulfillmentStatus === 'fulfilled'
-                            ? 'badge-success'
-                            : order.fulfillmentStatus === 'partial'
-                            ? 'badge-warning'
-                            : 'badge-neutral'
-                        }`}
-                      >
-                        {order.fulfillmentStatus === 'fulfilled' && <PackageCheck size={12} />}
-                        {order.fulfillmentStatus === 'partial' && <Clock size={12} />}
-                        {order.fulfillmentStatus}
-                      </span>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>
-                      {order.deadline ? new Date(order.deadline).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      }) : 'N/A'}
-                    </td>
-                    <td>
-                      {order.isOverdue ? (
-                        <span className="badge badge-critical">
-                          <AlertTriangle size={12} /> +{Math.floor(order.overdueMinutes / 60)}h {order.overdueMinutes % 60}m
+                      {order.customerEmail && (
+                        <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                          {order.customerEmail}
                         </span>
-                      ) : order.fulfillmentStatus === 'fulfilled' ? (
-                        <span className="badge badge-success">On-Time</span>
-                      ) : (
-                        <span className="badge badge-neutral">On Track</span>
                       )}
-                    </td>
-                    <td style={{ fontWeight: 600 }}>${order.totalAmount.toFixed(2)}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => onOpenOrderModal(order)}
-                          title="View order line items & SLA breakdown"
-                        >
-                          <Eye size={13} />
-                          <span>Details</span>
-                        </button>
-                        <a
-                          href={order.shopifyUrl || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-primary btn-sm"
-                          title="Fulfill in Shopify Admin"
-                        >
-                          <ExternalLink size={13} />
-                          <span>Shopify</span>
-                        </a>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                  </td>
+                  <td style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </td>
+                  <td>
+                    <span
+                      className="badge"
+                      style={{
+                        backgroundColor:
+                          order.financialStatus === 'paid'
+                            ? 'var(--success-bg)'
+                            : order.financialStatus === 'refunded'
+                              ? 'var(--danger-bg)'
+                              : 'var(--warning-bg)',
+                        color:
+                          order.financialStatus === 'paid'
+                            ? 'var(--success)'
+                            : order.financialStatus === 'refunded'
+                              ? 'var(--danger)'
+                              : 'var(--warning)',
+                      }}
+                    >
+                      {order.financialStatus}
+                    </span>
+                  </td>
+                  <td>{getFulfillmentBadge(order.fulfillmentStatus)}</td>
+                  <td>
+                    <span>{order.totalItems} items</span>
+                    {order.fulfillableQuantity > 0 && (
+                      <span style={{ fontSize: '11px', color: 'var(--warning)', display: 'block' }}>
+                        ({order.fulfillableQuantity} unfulfilled)
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <span style={{ fontWeight: 700 }}>
+                      ${order.totalAmount.toFixed(2)} {order.currencyCode}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openOrderModal(order);
+                      }}
+                    >
+                      <Eye size={13} />
+                      <span>Inspect</span>
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
 
-        {/* Server-Side Pagination Row */}
-        <div className="pagination-row" style={{ padding: '1rem 1.5rem', background: 'var(--bg-card-subtle)' }}>
+        {/* Server Pagination */}
+        <div className="pagination-bar">
           <div>
-            Showing <strong>{orders.length}</strong> of <strong>{totalCount}</strong> monitored orders
+            Showing <strong>{orders.length}</strong> of <strong>{totalCount}</strong> orders
           </div>
-
           <div className="pagination-actions">
             <button
               className="btn btn-secondary btn-sm"
               disabled={page <= 1 || isLoading}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              <ChevronLeft size={14} /> Previous
+              <ChevronLeft size={14} />
+              <span>Previous</span>
             </button>
-            <span style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem', fontSize: '0.85rem' }}>
+            <span style={{ padding: '0 8px', fontWeight: 600 }}>
               Page {page} of {totalPages}
             </span>
             <button
               className="btn btn-secondary btn-sm"
               disabled={page >= totalPages || isLoading}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => setPage((p) => p + 1)}
             >
-              Next <ChevronRight size={14} />
+              <span>Next</span>
+              <ChevronRight size={14} />
             </button>
           </div>
         </div>
@@ -267,3 +324,5 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ onOpenOrderModal }) => {
     </div>
   );
 };
+
+export default OrdersPage;

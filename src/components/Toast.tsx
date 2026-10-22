@@ -12,9 +12,9 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
     <div className="toast-container">
       {toasts.map((toast) => (
         <div key={toast.id} className={`toast ${toast.type}`}>
-          {toast.type === 'success' && <CheckCircle size={20} color="#10b981" />}
-          {toast.type === 'error' && <AlertCircle size={20} color="#ef4444" />}
-          {toast.type === 'info' && <Info size={20} color="#3b82f6" />}
+          {toast.type === 'success' && <CheckCircle size={20} color="#008060" />}
+          {toast.type === 'error' && <AlertCircle size={20} color="#eb5757" />}
+          {toast.type === 'info' && <Info size={20} color="#2c6ecb" />}
 
           <div className="toast-content">
             <div className="toast-title">{toast.title}</div>

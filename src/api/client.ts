@@ -1,13 +1,4 @@
-import {
-  DashboardSummary,
-  DashboardTrend,
-  Order,
-  Alert,
-  Settings,
-  PaginatedResult,
-  ApiResponse,
-  ShopifyIntegrationStatus,
-} from '../types';
+import { ApiResponse } from '../types';
 import { HttpStatus, getStatusFeedback } from '../constants/httpStatus';
 import { toast } from 'sonner';
 
@@ -25,7 +16,7 @@ export interface TokenStatusInfo {
   error?: string;
 }
 
-class ApiClient {
+export class ApiClient {
   private token: string | null = null;
   private refreshTokenValue: string | null = null;
   private tokenExpiry: number = 0; // unix seconds
@@ -45,7 +36,7 @@ class ApiClient {
   /**
    * Save token pair to in-memory state
    */
-  private storeTokens(token: string, refreshToken?: string, expiresIn?: number): void {
+  public storeTokens(token: string, refreshToken?: string, expiresIn?: number): void {
     this.token = token;
 
     if (refreshToken) {
@@ -98,7 +89,6 @@ class ApiClient {
    */
   public async refreshAccessToken(): Promise<string> {
     if (!this.refreshTokenValue) {
-      // If no refresh token, obtain new session
       return this.fetchToken();
     }
 
@@ -125,7 +115,7 @@ class ApiClient {
       return json.data.token;
     } catch (err) {
       // Lỗi tạm thời (mạng/timeout/body không phải JSON): giữ token, ném lỗi cho caller
-      throw err instanceof Error ? err : new Error('Không thể làm mới token');
+      throw err instanceof Error ? err : new Error('Không thể làm mới token', { cause: err });
     }
   }
 
@@ -149,7 +139,7 @@ class ApiClient {
   /**
    * Ensure a valid token is available before making protected requests
    */
-  private async getValidToken(): Promise<string> {
+  public async getValidToken(): Promise<string> {
     const now = Math.floor(Date.now() / 1000);
 
     // If token exists and is valid (with 30s safety margin)
@@ -179,7 +169,7 @@ class ApiClient {
   /**
    * Centralized HTTP Request wrapper with Bearer token, auto 401 recovery, and toast integration
    */
-  private async request<T>(
+  public async request<T>(
     endpoint: string,
     options?: RequestInit,
     isRetry = false,
@@ -234,124 +224,65 @@ class ApiClient {
         throw apiErr;
       }
 
-      return json.data;
+      return json.data as T;
     } catch (err: unknown) {
       if (err instanceof Error && (err as Error & { handled?: boolean }).handled) {
         throw err;
       }
-      const networkMsg = 'Không thể kết nối đến máy chủ Order Watchdog Backend (Network Error)';
+      const networkMsg = 'Không thể kết nối đến máy chủ StockPilot Backend (Network Error)';
       if (!silent) {
         toast.error('Lỗi kết nối mạng', { description: networkMsg });
       }
-      throw new Error(networkMsg);
+      throw new Error(networkMsg, { cause: err });
     }
   }
 
-  // Dashboard APIs
-  public async getDashboardSummary(silent = true): Promise<DashboardSummary> {
-    return this.request<DashboardSummary>('/dashboard/summary', undefined, false, silent);
+  public async get<T>(endpoint: string, silent = false): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET' }, false, silent);
   }
 
-  public async getDashboardTrends(days: 7 | 30 | 90 = 7): Promise<DashboardTrend> {
-    return this.request<DashboardTrend>(`/dashboard/trends?days=${days}`);
+  public async post<T>(endpoint: string, body?: any, silent = false): Promise<T> {
+    return this.request<T>(
+      endpoint,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      false,
+      silent
+    );
   }
 
-  // Orders APIs
-  public async getOrders(params: {
-    status?: string;
-    search?: string;
-    dateFrom?: string;
-    dateTo?: string;
-    sortBy?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<PaginatedResult<Order>> {
-    const searchParams = new URLSearchParams();
-    if (params.status && params.status !== 'all') searchParams.append('status', params.status);
-    if (params.search && params.search.trim()) searchParams.append('search', params.search.trim());
-    if (params.dateFrom) searchParams.append('dateFrom', params.dateFrom);
-    if (params.dateTo) searchParams.append('dateTo', params.dateTo);
-    if (params.sortBy) searchParams.append('sortBy', params.sortBy);
-    if (params.page) searchParams.append('page', String(params.page));
-    if (params.limit) searchParams.append('limit', String(params.limit));
-
-    const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
-    return this.request<PaginatedResult<Order>>(`/orders${qs}`);
+  public async put<T>(endpoint: string, body?: any, silent = false): Promise<T> {
+    return this.request<T>(
+      endpoint,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      false,
+      silent
+    );
   }
 
-  public async getOrderById(id: string, silent = true): Promise<Order> {
-    return this.request<Order>(`/orders/${id}`, undefined, false, silent);
+  public async patch<T>(endpoint: string, body?: any, silent = false): Promise<T> {
+    return this.request<T>(
+      endpoint,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      false,
+      silent
+    );
   }
 
-  // Alerts APIs
-  public async getAlerts(params: {
-    severity?: string;
-    status?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<PaginatedResult<Alert>> {
-    const searchParams = new URLSearchParams();
-    if (params.severity && params.severity !== 'all') searchParams.append('severity', params.severity);
-    if (params.status && params.status !== 'all') searchParams.append('status', params.status);
-    if (params.page) searchParams.append('page', String(params.page));
-    if (params.limit) searchParams.append('limit', String(params.limit));
-
-    const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
-    return this.request<PaginatedResult<Alert>>(`/alerts${qs}`);
-  }
-
-  public async getAlertsSummary(): Promise<{
-    totalActive: number;
-    criticalCount: number;
-    warningCount: number;
-    acknowledgedCount: number;
-    resolvedCount: number;
-  }> {
-    return this.request<{
-      totalActive: number;
-      criticalCount: number;
-      warningCount: number;
-      acknowledgedCount: number;
-      resolvedCount: number;
-    }>('/alerts/summary');
-  }
-
-  public async acknowledgeAlert(alertId: string): Promise<Alert> {
-    return this.request<Alert>(`/alerts/${alertId}/acknowledge`, {
-      method: 'PATCH',
-    });
-  }
-
-  // Settings APIs
-  public async getSettings(): Promise<Settings> {
-    return this.request<Settings>('/settings');
-  }
-
-  public async updateSettings(settings: Partial<Settings>): Promise<Settings> {
-    return this.request<Settings>('/settings', {
-      method: 'PUT',
-      body: JSON.stringify(settings),
-    });
-  }
-
-  // Notifications API
-  public async sendTestNotification(email?: string): Promise<{ success: boolean; isSimulated: boolean; message: string }> {
-    return this.request<{ success: boolean; isSimulated: boolean; message: string }>('/notifications/test', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    });
-  }
-
-  // Shopify Integration APIs
-  public async getShopifyStatus(): Promise<ShopifyIntegrationStatus> {
-    return this.request<ShopifyIntegrationStatus>('/integrations/shopify/status');
-  }
-
-  public async syncShopify(): Promise<{ syncedCount: number; message: string }> {
-    return this.request<{ syncedCount: number; message: string }>('/integrations/shopify/sync', {
-      method: 'POST',
-    });
+  public async delete<T>(endpoint: string, silent = false): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' }, false, silent);
   }
 }
 
-export const api = new ApiClient();
+export const httpClient = new ApiClient();

@@ -1,10 +1,22 @@
 import React from 'react';
-import { ShieldAlert, LayoutDashboard, ShoppingCart, Bell, Settings, X } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Boxes,
+  ShoppingCart,
+  Bell,
+  TrendingUp,
+  Settings,
+  X,
+  Store,
+  Layers,
+} from 'lucide-react';
 import { NavigationTab, DashboardSummary } from '../types';
+import { useTranslation } from '../i18n';
 
 interface SidebarProps {
-  activeTab: NavigationTab;
-  onSelectTab: (tab: NavigationTab) => void;
+  activeTab?: NavigationTab;
+  onSelectTab?: (tab: NavigationTab) => void;
   summary: DashboardSummary | null;
   mobileOpen: boolean;
   onCloseMobile: () => void;
@@ -17,24 +29,62 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
   onCloseMobile,
 }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const currentTab: NavigationTab =
+    activeTab ||
+    (() => {
+      if (location.pathname.startsWith('/inventory')) return 'inventory';
+      if (location.pathname.startsWith('/orders')) return 'orders';
+      if (location.pathname.startsWith('/alerts')) return 'alerts';
+      if (location.pathname.startsWith('/analytics')) return 'analytics';
+      if (location.pathname.startsWith('/settings')) return 'settings';
+      return 'dashboard';
+    })();
+
   const activeAlertsCount = summary?.monitoringStatus.activeAlertsCount || 0;
-  const shopDomain = summary?.monitoringStatus.shopDomain || 'quickstart-watchdog.myshopify.com';
+  const shopDomain = summary?.monitoringStatus.shopDomain || 'stockpilot-demo.myshopify.com';
   const isDemo = summary?.monitoringStatus.isDemoMode ?? true;
 
   const handleNavClick = (tab: NavigationTab) => {
-    onSelectTab(tab);
+    if (onSelectTab) {
+      onSelectTab(tab);
+    }
+    switch (tab) {
+      case 'dashboard':
+        navigate('/');
+        break;
+      case 'inventory':
+        navigate('/inventory');
+        break;
+      case 'orders':
+        navigate('/orders');
+        break;
+      case 'alerts':
+        navigate('/alerts');
+        break;
+      case 'analytics':
+        navigate('/analytics');
+        break;
+      case 'settings':
+        navigate('/settings');
+        break;
+    }
     onCloseMobile();
   };
 
   return (
     <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
+      {/* Brand Header */}
       <div className="sidebar-brand">
         <div className="brand-icon-box">
-          <ShieldAlert size={20} />
+          <Layers size={20} />
         </div>
         <div className="brand-titles">
-          <h1>Order Watchdog</h1>
-          <span>Shopify Fulfillment SaaS</span>
+          <h1>StockPilot</h1>
+          <span>{t('nav.tagline')}</span>
         </div>
         {mobileOpen && (
           <button
@@ -52,74 +102,74 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
+      {/* Primary Navigation Menu */}
       <nav className="sidebar-nav">
         <button
-          id="nav-overview"
-          className={`nav-item-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+          className={`sidebar-nav-item ${currentTab === 'dashboard' ? 'active' : ''}`}
           onClick={() => handleNavClick('dashboard')}
         >
-          <div className="nav-item-left">
-            <LayoutDashboard size={18} />
-            <span>Overview</span>
-          </div>
+          <LayoutDashboard size={18} />
+          <span>{t('nav.dashboard')}</span>
         </button>
 
         <button
-          id="nav-orders"
-          className={`nav-item-btn ${activeTab === 'orders' ? 'active' : ''}`}
+          className={`sidebar-nav-item ${currentTab === 'inventory' ? 'active' : ''}`}
+          onClick={() => handleNavClick('inventory')}
+        >
+          <Boxes size={18} />
+          <span>{t('nav.inventory')}</span>
+        </button>
+
+        <button
+          className={`sidebar-nav-item ${currentTab === 'orders' ? 'active' : ''}`}
           onClick={() => handleNavClick('orders')}
         >
-          <div className="nav-item-left">
-            <ShoppingCart size={18} />
-            <span>Orders</span>
-          </div>
-          {summary && summary.overdueOrders > 0 && (
-            <span
-              className="badge badge-critical"
-              style={{ fontSize: '0.68rem', padding: '0.1rem 0.45rem' }}
-            >
-              {summary.overdueOrders}
-            </span>
-          )}
+          <ShoppingCart size={18} />
+          <span>{t('nav.orders')}</span>
         </button>
 
         <button
-          id="nav-alerts"
-          className={`nav-item-btn ${activeTab === 'alerts' ? 'active' : ''}`}
+          className={`sidebar-nav-item ${currentTab === 'alerts' ? 'active' : ''}`}
           onClick={() => handleNavClick('alerts')}
         >
-          <div className="nav-item-left">
-            <Bell size={18} />
-            <span>Alert Center</span>
-          </div>
-          {activeAlertsCount > 0 && (
-            <span className="nav-alert-badge">{activeAlertsCount}</span>
-          )}
+          <Bell size={18} />
+          <span>{t('nav.alerts')}</span>
+          {activeAlertsCount > 0 && <span className="nav-item-badge">{activeAlertsCount}</span>}
         </button>
 
         <button
-          id="nav-settings"
-          className={`nav-item-btn ${activeTab === 'settings' ? 'active' : ''}`}
+          className={`sidebar-nav-item ${currentTab === 'analytics' ? 'active' : ''}`}
+          onClick={() => handleNavClick('analytics')}
+        >
+          <TrendingUp size={18} />
+          <span>{t('nav.analytics')}</span>
+        </button>
+
+        <button
+          className={`sidebar-nav-item ${currentTab === 'settings' ? 'active' : ''}`}
           onClick={() => handleNavClick('settings')}
         >
-          <div className="nav-item-left">
-            <Settings size={18} />
-            <span>Settings</span>
-          </div>
+          <Settings size={18} />
+          <span>{t('nav.settings')}</span>
         </button>
       </nav>
 
+      {/* Connected Store Profile Footer */}
       <div className="sidebar-footer">
-        <div className="store-pill-footer">
-          <div className="store-info-text">
-            <span className="store-domain" title={shopDomain}>
-              {shopDomain}
+        <div className="store-card">
+          <Store size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+          <div className="store-info">
+            <span className="store-name" title={shopDomain}>
+              {shopDomain.split('.')[0]}
             </span>
-            <span className="store-plan-tag">Shopify Plus Store</span>
+            <span className="store-plan">
+              {isDemo ? t('common.demoMode') : t('common.liveShopify')}
+            </span>
           </div>
-          {isDemo && <span className="demo-chip">Sandbox</span>}
         </div>
       </div>
     </aside>
   );
 };
+
+export default Sidebar;

@@ -1,529 +1,622 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Info, Send, Key, ShieldCheck, RefreshCw } from 'lucide-react';
-import { Settings, ShopifyIntegrationStatus } from '../../types';
-import { api, TokenStatusInfo } from '../../services/api';
+import {
+  Save,
+  Send,
+  Store,
+  Sliders,
+  Bell,
+  Trash2,
+  CheckCircle,
+  ShieldCheck,
+  RefreshCw,
+  Globe,
+} from 'lucide-react';
+import { ShopifyIntegrationStatus } from '../../types';
+import { api, TokenStatusInfo } from '../../api';
 import { toast } from 'sonner';
+import { useOutletContext } from 'react-router-dom';
+import { MainLayoutContextType } from '../../layouts/MainLayout';
+import { useTranslation } from '../../i18n';
 
-interface SettingsPageProps {
-  onToast: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
-}
+export const SettingsPage: React.FC = () => {
+  const { language, setLanguage, t } = useTranslation();
+  const context = useOutletContext<MainLayoutContextType | null>();
+  const refreshSummary = context?.refreshSummary || (async () => {});
 
-export const SettingsPage: React.FC<SettingsPageProps> = ({ onToast }) => {
-  const [, setSettings] = useState<Settings | null>(null);
   const [integration, setIntegration] = useState<ShopifyIntegrationStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [tokenInfo, setTokenInfo] = useState<TokenStatusInfo | null>(null);
   const [isVerifyingToken, setIsVerifyingToken] = useState(false);
-  const [isRefreshingToken, setIsRefreshingToken] = useState(false);
 
   // Form State
-  const [thresholdPreset, setThresholdPreset] = useState<'12' | '24' | '48' | 'custom'>('24');
-  const [customThreshold, setCustomThreshold] = useState('24');
-  const [warningLeadTime, setWarningLeadTime] = useState('4');
+  const [defaultLowStockThreshold, setDefaultLowStockThreshold] = useState<number>(10);
+  const [defaultLeadTimeDays, setDefaultLeadTimeDays] = useState<number>(7);
+  const [defaultSafetyStockDays, setDefaultSafetyStockDays] = useState<number>(5);
+  const [salesVelocityDays, setSalesVelocityDays] = useState<number>(30);
+  const [locationScope, setLocationScope] = useState<string>('all');
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [notificationEmail, setNotificationEmail] = useState('');
-  const [digestFrequency, setDigestFrequency] = useState<'immediate' | 'daily' | 'hourly'>('immediate');
+  const [dailyDigest, setDailyDigest] = useState(true);
+  const [productOverrides, setProductOverrides] = useState<Record<string, any>>({});
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
         setIsLoading(true);
         const [settData, integData, tokData] = await Promise.all([
-          api.getSettings(),
-          api.getShopifyStatus(),
-          api.verifyToken().catch(() => null),
+          api.settings.getSettings(),
+          api.integrations.getShopifyStatus(),
+          api.auth.verifyToken().catch(() => null),
         ]);
-        setSettings(settData);
         setIntegration(integData);
         if (tokData) setTokenInfo(tokData);
 
-        // Populate form
-        const th = settData.overdueThresholdHours;
-        if (th === 12 || th === 24 || th === 48) {
-          setThresholdPreset(String(th) as '12' | '24' | '48');
-        } else {
-          setThresholdPreset('custom');
-          setCustomThreshold(String(th));
-        }
-        setWarningLeadTime(String(settData.warningLeadTimeHours));
-        setEmailEnabled(settData.emailEnabled);
-        setNotificationEmail(settData.notificationEmail);
-        setDigestFrequency(settData.digestFrequency);
+        // Populate Form
+        setDefaultLowStockThreshold(settData.defaultLowStockThreshold ?? 10);
+        setDefaultLeadTimeDays(settData.defaultLeadTimeDays ?? 7);
+        setDefaultSafetyStockDays(settData.defaultSafetyStockDays ?? 5);
+        setSalesVelocityDays(settData.salesVelocityDays ?? 30);
+        setLocationScope(settData.locationScope ?? 'all');
+        setEmailEnabled(settData.emailEnabled ?? true);
+        setNotificationEmail(settData.notificationEmail ?? '');
+        setDailyDigest(settData.dailyDigest ?? true);
+        setProductOverrides(settData.productOverrides ?? {});
       } catch (err) {
         console.error('Failed to load settings:', err);
-        onToast('error', 'Error', 'Failed to load store settings from backend.');
+        toast.error('Lỗi tải cài đặt từ máy chủ');
       } finally {
         setIsLoading(false);
       }
     };
     loadSettings();
-  }, [onToast]);
+  }, []);
 
-  const handleVerifyToken = async () => {
-    try {
-      setIsVerifyingToken(true);
-      const res = await api.verifyToken();
-      setTokenInfo(res);
-      if (res.valid) {
-        toast.success('Xác thực Token thành công', {
-          description: `Shop: ${res.shop?.domain || 'Shopify'} | Thời hạn còn lại: ${res.remainingSeconds ?? '—'} giây`,
-        });
-      } else {
-        toast.error('Token không hợp lệ hoặc đã hết hạn', {
-          description: res.error || 'Vui lòng bấm làm mới token.',
-        });
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi kiểm tra token';
-      toast.error('Lỗi kiểm tra token', { description: msg });
-    } finally {
-      setIsVerifyingToken(false);
-    }
-  };
-
-  const handleRefreshToken = async () => {
-    try {
-      setIsRefreshingToken(true);
-      await api.refreshAccessToken();
-      const res = await api.verifyToken();
-      setTokenInfo(res);
-      if (!res.valid) {
-        toast.error('Token vẫn không hợp lệ sau khi làm mới', {
-          description: res.error || 'Vui lòng thử lại.',
-        });
-        return;
-      }
-      toast.success('Làm mới token thành công', {
-        description: `Thời hạn: ${res.remainingSeconds ?? '—'} giây.`,
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Không thể làm mới token';
-      toast.error('Lỗi làm mới token', { description: msg });
-    } finally {
-      setIsRefreshingToken(false);
-    }
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    const thresholdHours =
-      thresholdPreset === 'custom' ? Number(customThreshold) : Number(thresholdPreset);
-
-    if (isNaN(thresholdHours) || thresholdHours <= 0) {
-      onToast('error', 'Validation Error', 'Please specify a valid positive overdue threshold.');
-      return;
-    }
-
-    const leadHours = Number(warningLeadTime);
-    if (isNaN(leadHours) || leadHours < 0 || leadHours >= thresholdHours) {
-      onToast(
-        'error',
-        'Validation Error',
-        `Warning lead time must be between 0 and less than threshold (${thresholdHours}h).`
-      );
-      return;
-    }
-
     try {
       setIsSaving(true);
-      const updated = await api.updateSettings({
-        overdueThresholdHours: thresholdHours,
-        warningLeadTimeHours: leadHours,
+      await api.settings.updateSettings({
+        defaultLowStockThreshold: Number(defaultLowStockThreshold),
+        defaultLeadTimeDays: Number(defaultLeadTimeDays),
+        defaultSafetyStockDays: Number(defaultSafetyStockDays),
+        salesVelocityDays: Number(salesVelocityDays),
+        locationScope,
         emailEnabled,
         notificationEmail,
-        digestFrequency,
+        dailyDigest,
+        productOverrides,
       });
-      setSettings(updated);
-      onToast('success', 'Settings Saved', 'Order fulfillment thresholds and notification rules updated.');
+      toast.success('Cập nhật cấu hình thành công', {
+        description: 'Các quy tắc dự báo tồn kho đã được áp dụng và lưu trữ an toàn.',
+      });
+      refreshSummary();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Save failed';
-      onToast('error', 'Error', msg);
+      const msg = err instanceof Error ? err.message : 'Lỗi cập nhật cấu hình';
+      toast.error('Lưu cấu hình thất bại', { description: msg });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleTestEmail = async () => {
+  const handleSendTestNotification = async () => {
     try {
       setIsSendingTest(true);
-      const res = await api.sendTestNotification(notificationEmail);
+      const res = await api.notifications.sendTestNotification();
       if (res.isSimulated) {
-        onToast(
-          'info',
-          'Notification Logged (Sandbox)',
-          res.message
-        );
+        toast.info('Email thử nghiệm (Môi trường phát triển)', {
+          description: `Chế độ mô phỏng: ${res.message}. Đã ghi log hệ thống.`,
+        });
       } else {
-        onToast('success', 'Email Dispatched', res.message);
+        toast.success('Gửi email thử nghiệm thành công', { description: res.message });
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send test email';
-      onToast('error', 'Delivery Error', msg);
+      const msg = err instanceof Error ? err.message : 'Lỗi gửi thông báo';
+      toast.error('Gửi email thử nghiệm thất bại', { description: msg });
     } finally {
       setIsSendingTest(false);
     }
   };
 
+  const handleRemoveOverride = async (variantId: string) => {
+    const updated = { ...productOverrides };
+    delete updated[variantId];
+    setProductOverrides(updated);
+    try {
+      await api.settings.updateSettings({ productOverrides: updated });
+      toast.success(`Đã xóa quy tắc ghi đè cho sản phẩm ${variantId}`);
+      refreshSummary();
+    } catch {
+      toast.error('Lỗi khi xóa ghi đè');
+    }
+  };
+
+  const handleVerifyToken = async () => {
+    try {
+      setIsVerifyingToken(true);
+      const res = await api.auth.verifyToken();
+      setTokenInfo(res);
+      if (res.valid) {
+        toast.success('Xác thực Token thành công', {
+          description: `Shop: ${res.shop?.domain || 'Shopify'} | Thời hạn còn lại: ${res.remainingSeconds ?? '—'}s`,
+        });
+      } else {
+        toast.error('Token không hợp lệ hoặc đã hết hạn');
+      }
+    } catch {
+      toast.error('Lỗi kiểm tra token');
+    } finally {
+      setIsVerifyingToken(false);
+    }
+  };
+
   if (isLoading) {
     return (
-      <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-        Loading configuration from backend...
+      <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
+        Loading StockPilot application settings...
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '880px' }}>
-      <form onSubmit={handleSave}>
-        {/* Section 1: Store & Shopify Integration */}
-        <div className="panel-card">
-          <div className="panel-header">
-            <div>
-              <h3 className="panel-title">Store &amp; Shopify Integration</h3>
-              <p className="panel-subtitle">Shopify connection parameters and multi-tenant environment</p>
+    <div style={{ maxWidth: '980px', margin: '0 auto' }}>
+      <form onSubmit={handleSaveSettings}>
+        {/* Section 1: Store Information */}
+        <section className="card">
+          <div className="card-header">
+            <div className="card-title-group">
+              <h3>Store Information & Shopify Connection</h3>
+              <p>Details of the connected Shopify merchant account and synchronization status</p>
+            </div>
+            <Store size={18} style={{ color: 'var(--primary)' }} />
+          </div>
+          <div className="card-body">
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '16px',
+                backgroundColor: 'var(--bg-card-subtle)',
+                padding: '16px',
+                borderRadius: 'var(--radius-md)',
+              }}
+            >
+              <div>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  Shopify Store Domain
+                </span>
+                <div style={{ fontWeight: 600, fontSize: '14px', marginTop: '3px' }}>
+                  {integration?.shopDomain || 'stockpilot-demo.myshopify.com'}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  Connection State
+                </span>
+                <div style={{ marginTop: '3px' }}>
+                  {integration?.isShopifyConnected ? (
+                    <span className="badge badge-healthy">
+                      <CheckCircle size={12} /> Connected
+                    </span>
+                  ) : (
+                    <span className="badge badge-low_stock">Demo Mode (Offline)</span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  Last Store Sync
+                </span>
+                <div style={{ fontWeight: 500, fontSize: '13px', marginTop: '3px' }}>
+                  {integration?.lastSyncedAt
+                    ? new Date(integration.lastSyncedAt).toLocaleString()
+                    : 'Just now'}
+                </div>
+              </div>
             </div>
           </div>
+        </section>
 
+        {/* Section 2: Token & API Security */}
+        <section className="card">
+          <div className="card-header">
+            <div className="card-title-group">
+              <h3>Shopify Session & Security Verification</h3>
+              <p>In-memory JWT token authentication and tenant boundary verification</p>
+            </div>
+            <ShieldCheck size={18} style={{ color: 'var(--success)' }} />
+          </div>
+          <div className="card-body">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>
+                  Session Token Status: {tokenInfo?.valid ? 'Active & Valid' : 'Validating'}
+                </span>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Remaining validity:{' '}
+                  <strong>
+                    {tokenInfo?.remainingSeconds ? `${tokenInfo.remainingSeconds}s` : '24 hours'}
+                  </strong>{' '}
+                  • Tenant: {tokenInfo?.shop?.domain || integration?.shopDomain}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleVerifyToken}
+                disabled={isVerifyingToken}
+              >
+                <RefreshCw size={13} className={isVerifyingToken ? 'spin-animation' : ''} />
+                <span>Verify Token Security</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 3: Inventory Forecasting Rules */}
+        <section className="card">
+          <div className="card-header">
+            <div className="card-title-group">
+              <h3>Inventory Rules & Forecasting Parameters</h3>
+              <p>Configure default thresholds, lead times, safety stocks, and velocity windows</p>
+            </div>
+            <Sliders size={18} style={{ color: 'var(--primary)' }} />
+          </div>
           <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '1rem',
-              background: 'var(--bg-card-subtle)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-md)',
-              padding: '1.25rem',
-            }}
+            className="card-body"
+            style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}
           >
-            <div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Store Domain
-              </span>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)', marginTop: '0.2rem' }}>
-                {integration?.shopDomain || 'quickstart-watchdog.myshopify.com'}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    marginBottom: '6px',
+                  }}
+                >
+                  Default Low Stock Threshold (Units)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={defaultLowStockThreshold}
+                  onChange={(e) => setDefaultLowStockThreshold(Number(e.target.value))}
+                  className="search-input"
+                  style={{ paddingLeft: '12px' }}
+                />
+                <span
+                  style={{
+                    fontSize: '11.5px',
+                    color: 'var(--text-muted)',
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
+                  Triggers low stock warnings when available quantity reaches or falls below this
+                  number.
+                </span>
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    marginBottom: '6px',
+                  }}
+                >
+                  Sales Velocity Calculation Window
+                </label>
+                <select
+                  value={salesVelocityDays}
+                  onChange={(e) => setSalesVelocityDays(Number(e.target.value))}
+                  className="search-input"
+                  style={{ paddingLeft: '12px', cursor: 'pointer' }}
+                >
+                  <option value={7}>Last 7 Days (Short-term surge)</option>
+                  <option value={14}>Last 14 Days (Bi-weekly cadence)</option>
+                  <option value={30}>Last 30 Days (Recommended default)</option>
+                  <option value={60}>Last 60 Days (Extended smoothing)</option>
+                  <option value={90}>Last 90 Days (Quarterly average)</option>
+                </select>
+                <span
+                  style={{
+                    fontSize: '11.5px',
+                    color: 'var(--text-muted)',
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
+                  Duration used to calculate average daily unit sales for runway forecasting.
+                </span>
               </div>
             </div>
 
-            <div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Connection Status
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
-                <span className={`status-dot ${integration?.isShopifyConnected ? 'connected' : 'demo'}`} />
-                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                  {integration?.isShopifyConnected ? 'App Bridge Connected' : 'Sandbox Demo Mode'}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    marginBottom: '6px',
+                  }}
+                >
+                  Default Restock Lead Time (Days)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="180"
+                  value={defaultLeadTimeDays}
+                  onChange={(e) => setDefaultLeadTimeDays(Number(e.target.value))}
+                  className="search-input"
+                  style={{ paddingLeft: '12px' }}
+                />
+                <span
+                  style={{
+                    fontSize: '11.5px',
+                    color: 'var(--text-muted)',
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
+                  Estimated calendar days from purchase order placement until warehouse receipt.
+                </span>
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    marginBottom: '6px',
+                  }}
+                >
+                  Safety Stock Buffer (Days)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="60"
+                  value={defaultSafetyStockDays}
+                  onChange={(e) => setDefaultSafetyStockDays(Number(e.target.value))}
+                  className="search-input"
+                  style={{ paddingLeft: '12px' }}
+                />
+                <span
+                  style={{
+                    fontSize: '11.5px',
+                    color: 'var(--text-muted)',
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
+                  Extra cushion days to prevent stockouts caused by transit delays or sudden sales
+                  spikes.
                 </span>
               </div>
             </div>
 
             <div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                API Scopes
-              </span>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                {integration?.scopes.join(', ') || 'read_orders, read_fulfillments'}
-              </div>
+              <label
+                style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}
+              >
+                Inventory Location Scope
+              </label>
+              <select
+                value={locationScope}
+                onChange={(e) => setLocationScope(e.target.value)}
+                className="search-input"
+                style={{ paddingLeft: '12px', cursor: 'pointer' }}
+              >
+                <option value="all">Consolidated Across All Warehouse Locations</option>
+                <option value="loc-main">Main Warehouse (US East) Only</option>
+                <option value="loc-west">West Coast Fulfillment Center Only</option>
+              </select>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Section 2: Overdue SLA Thresholds */}
-        <div className="panel-card">
-          <div className="panel-header">
-            <div>
-              <h3 className="panel-title">Fulfillment SLA &amp; Overdue Detection</h3>
-              <p className="panel-subtitle">Define when an unfulfilled order qualifies as overdue</p>
+        {/* Section 4: Merchant Notifications */}
+        <section className="card">
+          <div className="card-header">
+            <div className="card-title-group">
+              <h3>Stock Alerts & Email Notifications</h3>
+              <p>Configure email digests and automated low stock alerts</p>
             </div>
+            <Bell size={18} style={{ color: 'var(--primary)' }} />
           </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.65rem' }}>
-              Overdue Threshold (Hours after Order Placement)
-            </label>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
-              {(['12', '24', '48', 'custom'] as const).map((preset) => (
-                <button
-                  type="button"
-                  key={preset}
-                  className={`btn ${thresholdPreset === preset ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setThresholdPreset(preset)}
-                >
-                  {preset === 'custom' ? 'Custom Hours' : `${preset} Hours`}
-                </button>
-              ))}
-            </div>
-
-            {thresholdPreset === 'custom' && (
-              <div style={{ maxWidth: '280px', marginTop: '0.5rem' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                  Enter custom hours:
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="720"
-                  className="form-input"
-                  value={customThreshold}
-                  onChange={(e) => setCustomThreshold(e.target.value)}
-                  style={{
-                    background: 'var(--bg-input)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '0.55rem 0.85rem',
-                    color: 'var(--text-main)',
-                    width: '100%',
-                  }}
-                  required
-                />
-              </div>
-            )}
-          </div>
-
-          <div style={{ marginBottom: '1.75rem', maxWidth: '320px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-              Warning Lead Time (Hours before SLA deadline)
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="48"
-              className="form-input"
-              value={warningLeadTime}
-              onChange={(e) => setWarningLeadTime(e.target.value)}
-              style={{
-                background: 'var(--bg-input)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                padding: '0.55rem 0.85rem',
-                color: 'var(--text-main)',
-                width: '100%',
-              }}
-              required
-            />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
-              Triggers a Warning state (e.g. 4h before 24h deadline = alert at 20h)
-            </span>
-          </div>
-
-          {/* SLA Calculation Rules Documentation Banner */}
           <div
-            style={{
-              background: 'var(--primary-subtle)',
-              border: '1px solid rgba(59, 130, 246, 0.25)',
-              borderRadius: 'var(--radius-md)',
-              padding: '1.15rem 1.35rem',
-              fontSize: '0.825rem',
-              lineHeight: 1.6,
-            }}
+            className="card-body"
+            style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '0.4rem' }}>
-              <Info size={16} /> Order Watchdog SLA Calculation Rules
-            </div>
-            <ul style={{ paddingLeft: '1.25rem', color: 'var(--text-secondary)' }}>
-              <li>
-                <strong>Elapsed Time:</strong> Calculated from the Shopify order creation timestamp (<code>createdAt</code>) using UTC server time as the canonical source of truth.
-              </li>
-              <li>
-                <strong>Financial Eligibility:</strong> Only orders with <code>paid</code> or <code>authorized</code> payment status are monitored for delivery delays. Unpaid/pending orders are excluded.
-              </li>
-              <li>
-                <strong>Canceled Orders:</strong> Orders marked <code>cancelledAt</code> in Shopify are immediately excluded and any active alerts are resolved.
-              </li>
-              <li>
-                <strong>Partial Fulfillment:</strong> Orders with outstanding unfulfilled quantities (<code>fulfillableQuantity &gt; 0</code>) are NOT treated as fully fulfilled and will trigger alerts if delayed.
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Section 3: Email Notifications */}
-        <div className="panel-card">
-          <div className="panel-header">
-            <div>
-              <h3 className="panel-title">Automated Email Notifications</h3>
-              <p className="panel-subtitle">Receive instant or digest alerts when orders become overdue</p>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <input
                 type="checkbox"
+                id="emailEnabled"
                 checked={emailEnabled}
                 onChange={(e) => setEmailEnabled(e.target.checked)}
-                style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
               />
-              <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                Enable Automated Email Alerts
-              </span>
-            </label>
-          </div>
+              <label
+                htmlFor="emailEnabled"
+                style={{ fontSize: '13.5px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Enable email notifications for low-stock and stockout alerts
+              </label>
+            </div>
 
-          {emailEnabled && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                  Notification Recipient Email *
-                </label>
-                <div style={{ display: 'flex', gap: '0.75rem', maxWidth: '520px' }}>
+            {emailEnabled && (
+              <>
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      marginBottom: '6px',
+                    }}
+                  >
+                    Merchant Notification Email Address
+                  </label>
                   <input
                     type="email"
                     value={notificationEmail}
                     onChange={(e) => setNotificationEmail(e.target.value)}
-                    placeholder="merchant@yourstore.com"
-                    style={{
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '0.55rem 0.85rem',
-                      color: 'var(--text-main)',
-                      flex: 1,
-                    }}
-                    required
+                    placeholder="merchant@example.com"
+                    className="search-input"
+                    style={{ paddingLeft: '12px' }}
                   />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <input
+                    type="checkbox"
+                    id="dailyDigest"
+                    checked={dailyDigest}
+                    onChange={(e) => setDailyDigest(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="dailyDigest" style={{ fontSize: '13px', cursor: 'pointer' }}>
+                    Send Daily Morning Digest (summary of urgent restock recommendations)
+                  </label>
+                </div>
+
+                <div>
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
-                    onClick={handleTestEmail}
+                    onClick={handleSendTestNotification}
                     disabled={isSendingTest}
-                    title="Send a real test notification to verify delivery"
                   >
-                    <Send size={13} />
-                    <span>{isSendingTest ? 'Sending...' : 'Send Test'}</span>
+                    <Send size={14} />
+                    <span>{isSendingTest ? 'Sending Test...' : 'Send Test Alert Email'}</span>
                   </button>
                 </div>
-              </div>
+              </>
+            )}
+          </div>
+        </section>
 
-              <div style={{ maxWidth: '320px' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                  Delivery Frequency
-                </label>
-                <select
-                  className="select-dropdown"
-                  value={digestFrequency}
-                  onChange={(e) => setDigestFrequency(e.target.value as 'immediate' | 'daily' | 'hourly')}
-                  style={{ width: '100%' }}
-                >
-                  <option value="immediate">Immediate (Real-time as orders become overdue)</option>
-                  <option value="daily">Daily Digest Summary (Every morning at 09:00)</option>
-                  <option value="hourly">Hourly Rollup</option>
-                </select>
-              </div>
+        {/* Section 5: Product Overrides List */}
+        <section className="card">
+          <div className="card-header">
+            <div className="card-title-group">
+              <h3>Variant-Level Overrides</h3>
+              <p>
+                Specific products configured with customized low stock thresholds and lead times
+              </p>
             </div>
-          )}
-        </div>
+          </div>
+          <div className="card-body" style={{ padding: 0 }}>
+            {Object.keys(productOverrides).length > 0 ? (
+              <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Variant ID</th>
+                      <th>Custom Threshold</th>
+                      <th>Custom Lead Time</th>
+                      <th>Custom Safety Stock</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(Object.entries(productOverrides) as [string, any][]).map(([vid, o]) => (
+                      <tr key={vid}>
+                        <td>
+                          <code style={{ color: 'var(--primary)', fontWeight: 600 }}>{vid}</code>
+                        </td>
+                        <td>{o.lowStockThreshold ? `${o.lowStockThreshold} units` : 'Default'}</td>
+                        <td>{o.leadTimeDays ? `${o.leadTimeDays} days` : 'Default'}</td>
+                        <td>{o.safetyStockDays ? `${o.safetyStockDays} days` : 'Default'}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleRemoveOverride(vid)}
+                            title="Remove override and reset to store defaults"
+                          >
+                            <Trash2 size={13} />
+                            <span>Remove</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '30px',
+                  color: 'var(--text-muted)',
+                  fontSize: '13px',
+                }}
+              >
+                No variant-level overrides configured. All products use the global store rules
+                above.
+              </div>
+            )}
+          </div>
+        </section>
 
-        {/* Save Button Bar */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+        {/* Section: Language Configuration */}
+        <section className="card">
+          <div className="card-header">
+            <div className="card-title-group">
+              <h3>{t('settings.languageTitle')}</h3>
+              <p>{t('settings.languageDesc')}</p>
+            </div>
+            <Globe size={18} style={{ color: 'var(--primary)' }} />
+          </div>
+          <div className="card-body">
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+              <button
+                type="button"
+                className={`btn ${language === 'vi' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setLanguage('vi')}
+                style={{ minWidth: '150px' }}
+              >
+                <span>🇻🇳 {t('settings.vietnamese')}</span>
+              </button>
+              <button
+                type="button"
+                className={`btn ${language === 'en' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setLanguage('en')}
+                style={{ minWidth: '150px' }}
+              >
+                <span>🇺🇸 {t('settings.english')}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Save Bar */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '40px' }}>
           <button
-            id="btn-save-settings"
             type="submit"
             className="btn btn-primary"
             disabled={isSaving}
+            style={{ padding: '10px 24px' }}
           >
             <Save size={16} />
-            <span>{isSaving ? 'Saving Settings...' : 'Save Configuration'}</span>
+            <span>{isSaving ? t('settings.saving') : t('settings.saveSettings')}</span>
           </button>
         </div>
       </form>
-
-      {/* Token Authentication & Refresh Diagnostics Panel */}
-      <div className="panel-card" style={{ marginTop: '2rem' }}>
-        <div className="panel-header">
-          <div>
-            <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Key size={18} color="var(--primary)" /> Token Authentication &amp; Session Diagnostics
-            </h3>
-            <p className="panel-subtitle">
-              Kiểm tra tính hợp lệ của JWT token, cơ chế tự động refetch / refresh token và nhận diện HTTP Status
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={handleVerifyToken}
-              disabled={isVerifyingToken}
-              title="Gửi token hiện tại lên BE /api/auth/verify để kiểm tra"
-            >
-              <ShieldCheck size={14} />
-              <span>{isVerifyingToken ? 'Đang kiểm tra...' : 'Kiểm tra Token (Verify)'}</span>
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={handleRefreshToken}
-              disabled={isRefreshingToken}
-              title="Gọi BE /api/auth/refresh để lấy Access Token mới"
-            >
-              <RefreshCw size={14} className={isRefreshingToken ? 'spin-animation' : ''} />
-              <span>{isRefreshingToken ? 'Đang làm mới...' : 'Làm mới Token (Refresh)'}</span>
-            </button>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
-            background: 'var(--bg-card-subtle)',
-            padding: '1.25rem',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border-subtle)',
-          }}
-        >
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Trạng thái Token
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', fontWeight: 700 }}>
-              <span
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: tokenInfo?.valid ? 'var(--success)' : 'var(--critical)',
-                }}
-              />
-              <span style={{ color: tokenInfo?.valid ? 'var(--success)' : 'var(--critical)' }}>
-                {tokenInfo?.valid ? 'Hợp lệ & Hoạt động (Valid)' : 'Chưa xác thực hoặc đã hết hạn'}
-              </span>
-            </div>
-          </div>
-
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Định dạng chuẩn
-            </span>
-            <div style={{ fontWeight: 600, marginTop: '0.25rem' }}>
-              Bearer JWT (RFC 7519 HMAC-SHA256)
-            </div>
-          </div>
-
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Thời hạn còn lại
-            </span>
-            <div style={{ fontWeight: 600, marginTop: '0.25rem' }}>
-              {tokenInfo?.remainingSeconds !== undefined
-                ? `${tokenInfo.remainingSeconds} giây (~${Math.round(tokenInfo.remainingSeconds / 60)} phút)`
-                : '—'}
-            </div>
-          </div>
-
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Tự động phục hồi khi lỗi 401
-            </span>
-            <div style={{ color: 'var(--text-link)', fontWeight: 600, marginTop: '0.25rem' }}>
-              Tự động dùng Refresh Token (Seamless Auto-Retry)
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
+
+export default SettingsPage;

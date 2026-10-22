@@ -1,9 +1,11 @@
 import React from 'react';
-import { Menu, Sun, Moon, RefreshCw, ShoppingBag } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Menu, Sun, Moon, RefreshCw, ShoppingBag, Clock, Globe } from 'lucide-react';
 import { NavigationTab, DashboardSummary } from '../types';
+import { useTranslation } from '../i18n';
 
 interface TopBarProps {
-  activeTab: NavigationTab;
+  activeTab?: NavigationTab;
   summary: DashboardSummary | null;
   onOpenMobile: () => void;
   theme: 'dark' | 'light';
@@ -21,34 +23,64 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSync,
   isSyncing,
 }) => {
+  const location = useLocation();
+  const { language, setLanguage, t } = useTranslation();
+
+  const currentTab: NavigationTab =
+    activeTab ||
+    (() => {
+      if (location.pathname.startsWith('/inventory')) return 'inventory';
+      if (location.pathname.startsWith('/orders')) return 'orders';
+      if (location.pathname.startsWith('/alerts')) return 'alerts';
+      if (location.pathname.startsWith('/analytics')) return 'analytics';
+      if (location.pathname.startsWith('/settings')) return 'settings';
+      return 'dashboard';
+    })();
+
   const getTabTitle = () => {
-    switch (activeTab) {
+    switch (currentTab) {
       case 'dashboard':
         return {
-          title: 'Overview Dashboard',
-          subtitle: 'Live fulfillment monitoring & SLA tracking',
+          title: t('topbar.dashboardTitle'),
+          subtitle: t('topbar.dashboardSubtitle'),
+        };
+      case 'inventory':
+        return {
+          title: t('topbar.inventoryTitle'),
+          subtitle: t('topbar.inventorySubtitle'),
         };
       case 'orders':
         return {
-          title: 'Order Monitoring',
-          subtitle: 'Track pending fulfillment and overdue delivery deadlines',
+          title: t('topbar.ordersTitle'),
+          subtitle: t('topbar.ordersSubtitle'),
         };
       case 'alerts':
         return {
-          title: 'Alert Center',
-          subtitle: 'Critical & warning alerts for overdue customer shipments',
+          title: t('topbar.alertsTitle'),
+          subtitle: t('topbar.alertsSubtitle'),
+        };
+      case 'analytics':
+        return {
+          title: t('topbar.analyticsTitle'),
+          subtitle: t('topbar.analyticsSubtitle'),
         };
       case 'settings':
         return {
-          title: 'Application Settings',
-          subtitle: 'Configure overdue threshold, notification rules, and email digests',
+          title: t('topbar.settingsTitle'),
+          subtitle: t('topbar.settingsSubtitle'),
         };
     }
   };
 
   const { title, subtitle } = getTabTitle();
   const isConnected = summary?.monitoringStatus.isShopifyConnected ?? false;
-  const shopDomain = summary?.monitoringStatus.shopDomain || 'quickstart-watchdog.myshopify.com';
+  const shopDomain = summary?.monitoringStatus.shopDomain || 'stockpilot-demo.myshopify.com';
+  const lastSync = summary?.monitoringStatus.lastSyncedAt
+    ? new Date(summary.monitoringStatus.lastSyncedAt).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : t('common.justNow');
 
   return (
     <header className="topbar">
@@ -72,13 +104,30 @@ export const TopBar: React.FC<TopBarProps> = ({
           className="shopify-status-badge"
           title={
             isConnected
-              ? `Connected via Shopify App Bridge to ${shopDomain}`
-              : `Running in Sandbox Demo Mode (${shopDomain})`
+              ? `${t('common.liveShopify')}: ${shopDomain}`
+              : `${t('common.demoMode')} (${shopDomain})`
           }
         >
           <span className={`status-dot ${isConnected ? 'connected' : 'demo'}`} />
           <ShoppingBag size={14} />
-          <span>{isConnected ? shopDomain : `${shopDomain} (Demo)`}</span>
+          <span>
+            {isConnected ? shopDomain : `${shopDomain.split('.')[0]} (${t('common.demoMode')})`}
+          </span>
+        </div>
+
+        {/* Last Sync Indicator */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            fontSize: '12px',
+            color: 'var(--text-muted)',
+          }}
+          title={t('topbar.lastSync')}
+        >
+          <Clock size={13} />
+          <span>{lastSync}</span>
         </div>
 
         {/* Sync Button */}
@@ -87,10 +136,22 @@ export const TopBar: React.FC<TopBarProps> = ({
           className="btn btn-secondary btn-sm"
           onClick={onSync}
           disabled={isSyncing}
-          title="Trigger manual order evaluation and sync"
+          title={t('common.syncNow')}
         >
           <RefreshCw size={14} className={isSyncing ? 'spin-animation' : ''} />
-          <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+          <span>{isSyncing ? t('common.syncing') : t('common.syncNow')}</span>
+        </button>
+
+        {/* Language Switcher */}
+        <button
+          id="btn-lang-toggle"
+          className="btn btn-secondary btn-sm"
+          onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
+          title={language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+          style={{ fontWeight: 700, gap: '4px', padding: '0.4rem 0.65rem' }}
+        >
+          <Globe size={14} />
+          <span>{language === 'vi' ? 'VI' : 'EN'}</span>
         </button>
 
         {/* Theme Toggle Button */}
@@ -98,7 +159,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           id="btn-theme-toggle"
           className="btn btn-secondary btn-icon"
           onClick={onToggleTheme}
-          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+          title={`${t('topbar.switchTheme')} ${theme === 'dark' ? 'Light' : 'Dark'}`}
         >
           {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
         </button>
@@ -106,3 +167,5 @@ export const TopBar: React.FC<TopBarProps> = ({
     </header>
   );
 };
+
+export default TopBar;

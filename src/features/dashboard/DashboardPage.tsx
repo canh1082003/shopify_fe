@@ -1,475 +1,665 @@
 import React, { useState, useEffect } from 'react';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   Package,
+  Boxes,
+  AlertTriangle,
   AlertOctagon,
-  Clock,
-  TrendingUp,
-  Activity,
-  ExternalLink,
+  Calendar,
+  DollarSign,
   Eye,
-  CheckCircle,
+  ArrowRight,
 } from 'lucide-react';
-import { DashboardSummary, DashboardTrend, Order } from '../../types';
-import { api } from '../../services/api';
+import { DashboardSummary, DashboardTrend } from '../../types';
+import { api } from '../../api';
+import { MainLayoutContextType } from '../../layouts/MainLayout';
+import { useTranslation } from '../../i18n';
 
-interface DashboardPageProps {
-  summary: DashboardSummary | null;
-  onOpenOrderModal: (order: Order) => void;
-  onNavigateToOrders: () => void;
-}
+export const DashboardPage: React.FC = () => {
+  const { t } = useTranslation();
+  const context = useOutletContext<MainLayoutContextType | null>();
+  const navigate = useNavigate();
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({
-  summary,
-  onOpenOrderModal,
-  onNavigateToOrders,
-}) => {
+  const summary: DashboardSummary | null = context?.summary ?? null;
+  const openOrderModal = context?.openOrderModal || (() => {});
+  const openInventoryById = context?.openInventoryById || (async () => {});
+
   const [trends, setTrends] = useState<DashboardTrend | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<7 | 30 | 90>(7);
-  const [recentOverdue, setRecentOverdue] = useState<Order[]>([]);
+  const [isLoadingTrends, setIsLoadingTrends] = useState(false);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
+    const loadTrends = async () => {
       try {
-        const [trendData, ordersRes] = await Promise.all([
-          api.getDashboardTrends(selectedPeriod),
-          api.getOrders({ status: 'overdue', limit: 5 }),
-        ]);
+        setIsLoadingTrends(true);
+        const trendData = await api.dashboard.getSalesTrends(selectedPeriod);
         setTrends(trendData);
-        setRecentOverdue(ordersRes.items);
       } catch (err) {
-        console.error('Failed to load dashboard data:', err);
+        console.error('Failed to load sales trends:', err);
+      } finally {
+        setIsLoadingTrends(false);
       }
     };
-    loadDashboardData();
+    loadTrends();
   }, [selectedPeriod]);
 
-  // SVG Chart Dimensions & Calculations
-  const chartPoints = trends?.points || [];
-  const maxVal = Math.max(...chartPoints.map((p) => Math.max(p.overdueCount, p.fulfilledCount, 1)), 5);
-  const chartWidth = 720;
-  const chartHeight = 220;
-  const paddingX = 40;
-  const paddingY = 30;
+  const kpis = summary?.kpis || {
+    totalProducts: 7,
+    totalInventoryUnits: 140,
+    lowStockProducts: 4,
+    outOfStockProducts: 2,
+    ordersThisMonth: 6,
+    estimatedInventoryValue: 3968,
+    currency: 'USD',
+  };
 
-  const getCoordinates = (index: number, value: number) => {
-    const x = paddingX + (index / Math.max(1, chartPoints.length - 1)) * (chartWidth - paddingX * 2);
-    const y = chartHeight - paddingY - (value / maxVal) * (chartHeight - paddingY * 2);
+  const health = summary?.inventoryHealth || {
+    healthyCount: 5,
+    lowStockCount: 4,
+    outOfStockCount: 2,
+    untrackedCount: 1,
+    totalTracked: 11,
+  };
+
+  const totalTrackedVariants = Math.max(
+    1,
+    health.healthyCount + health.lowStockCount + health.outOfStockCount + health.untrackedCount
+  );
+  const pctHealthy = Math.round((health.healthyCount / totalTrackedVariants) * 100);
+  const pctLow = Math.round((health.lowStockCount / totalTrackedVariants) * 100);
+  const pctOut = Math.round((health.outOfStockCount / totalTrackedVariants) * 100);
+  const pctUntracked = Math.max(0, 100 - pctHealthy - pctLow - pctOut);
+
+  // SVG Chart Calculation for Sales Trend
+  const chartPoints = trends?.points || [];
+  const maxUnits = Math.max(...chartPoints.map((p) => p.unitsSold), 10);
+  const chartWidth = 620;
+  const chartHeight = 180;
+  const padX = 35;
+  const padY = 25;
+
+  const getCoordinates = (index: number, val: number) => {
+    const x = padX + (index / Math.max(1, chartPoints.length - 1)) * (chartWidth - padX * 2);
+    const y = chartHeight - padY - (val / maxUnits) * (chartHeight - padY * 2);
     return { x, y };
   };
 
-  const overduePathData = chartPoints
+  const pathData = chartPoints
     .map((p, i) => {
-      const { x, y } = getCoordinates(i, p.overdueCount);
+      const { x, y } = getCoordinates(i, p.unitsSold);
       return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
     })
     .join(' ');
 
-  const fulfilledPathData = chartPoints
-    .map((p, i) => {
-      const { x, y } = getCoordinates(i, p.fulfilledCount);
-      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-    })
-    .join(' ');
+  const areaData =
+    chartPoints.length > 0
+      ? `${pathData} L ${getCoordinates(chartPoints.length - 1, 0).x} ${chartHeight - padY} L ${getCoordinates(0, 0).x} ${chartHeight - padY} Z`
+      : '';
 
   return (
     <div>
-      {/* 4 Primary Metric Cards */}
-      <section className="metrics-grid">
-        {/* Metric 1: Total Orders */}
-        <div className="metric-card">
-          <div className="metric-card-top">
-            <span className="metric-label">Total Monitored Orders</span>
-            <div className="metric-icon-box" style={{ background: 'var(--primary-subtle)', color: 'var(--primary)' }}>
-              <Package size={20} />
+      {/* 6 KPI Cards Grid */}
+      <section className="kpis-grid">
+        {/* KPI 1: Total Products */}
+        <div
+          className="kpi-card"
+          onClick={() => navigate('/inventory')}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="kpi-card-header">
+            <span className="kpi-label">{t('dashboard.kpiTotalProducts')}</span>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'var(--primary-subtle)', color: 'var(--primary)' }}
+            >
+              <Package size={18} />
             </div>
           </div>
-          <div className="metric-value-row">
-            <span className="metric-value">{summary?.totalOrders ?? '—'}</span>
-            {summary?.comparison?.totalOrdersDiff && (
-              <span className="badge badge-success" style={{ fontSize: '0.72rem' }}>
-                +{summary.comparison.totalOrdersDiff}%
-              </span>
-            )}
+          <div className="kpi-value-row">
+            <span className="kpi-value">{kpis.totalProducts}</span>
           </div>
-          <span className="metric-desc">Total orders within active monitoring window</span>
+          <span className="kpi-subtext">Active catalog items</span>
         </div>
 
-        {/* Metric 2: Overdue Orders */}
-        <div className="metric-card">
-          <div className="metric-card-top">
-            <span className="metric-label">Overdue Orders</span>
-            <div className="metric-icon-box" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
-              <AlertOctagon size={20} />
+        {/* KPI 2: Total Inventory Units */}
+        <div
+          className="kpi-card"
+          onClick={() => navigate('/inventory')}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="kpi-card-header">
+            <span className="kpi-label">{t('dashboard.kpiTotalUnits')}</span>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'rgba(2, 132, 199, 0.1)', color: '#0284C7' }}
+            >
+              <Boxes size={18} />
             </div>
           </div>
-          <div className="metric-value-row">
-            <span className="metric-value" style={{ color: (summary?.overdueOrders ?? 0) > 0 ? '#ef4444' : 'inherit' }}>
-              {summary?.overdueOrders ?? '—'}
-            </span>
-            {(summary?.overdueOrders ?? 0) > 0 && (
-              <span className="badge badge-critical" style={{ fontSize: '0.72rem' }}>
-                Attention Required
-              </span>
-            )}
+          <div className="kpi-value-row">
+            <span className="kpi-value">{kpis.totalInventoryUnits.toLocaleString()}</span>
           </div>
-          <span className="metric-desc">Exceeding configured {summary?.monitoringStatus.thresholdHours || 24}h SLA deadline</span>
+          <span className="kpi-subtext">Tracked stock across locations</span>
         </div>
 
-        {/* Metric 3: Pending Fulfillment */}
-        <div className="metric-card">
-          <div className="metric-card-top">
-            <span className="metric-label">Pending Fulfillment</span>
-            <div className="metric-icon-box" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
-              <Clock size={20} />
+        {/* KPI 3: Low Stock Products */}
+        <div className="kpi-card" onClick={() => navigate('/alerts')} style={{ cursor: 'pointer' }}>
+          <div className="kpi-card-header">
+            <span className="kpi-label">{t('dashboard.kpiLowStock')}</span>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning)' }}
+            >
+              <AlertTriangle size={18} />
             </div>
           </div>
-          <div className="metric-value-row">
-            <span className="metric-value">{summary?.pendingFulfillment ?? '—'}</span>
-          </div>
-          <span className="metric-desc">Unfulfilled and partially fulfilled customer shipments</span>
-        </div>
-
-        {/* Metric 4: On-Time Fulfillment Rate */}
-        <div className="metric-card">
-          <div className="metric-card-top">
-            <span className="metric-label">On-Time Fulfillment Rate</span>
-            <div className="metric-icon-box" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
-              <TrendingUp size={20} />
-            </div>
-          </div>
-          <div className="metric-value-row">
-            <span className="metric-value" style={{ color: '#10b981' }}>
-              {summary?.onTimeRate !== undefined ? `${summary.onTimeRate}%` : '—'}
+          <div className="kpi-value-row">
+            <span className="kpi-value" style={{ color: 'var(--warning)' }}>
+              {kpis.lowStockProducts}
             </span>
           </div>
-          <span className="metric-desc">Eligible orders dispatched prior to configured deadline</span>
+          <span className="kpi-subtext">Below configured threshold</span>
+        </div>
+
+        {/* KPI 4: Out of Stock Products */}
+        <div className="kpi-card" onClick={() => navigate('/alerts')} style={{ cursor: 'pointer' }}>
+          <div className="kpi-card-header">
+            <span className="kpi-label">{t('dashboard.kpiOutOfStock')}</span>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger)' }}
+            >
+              <AlertOctagon size={18} />
+            </div>
+          </div>
+          <div className="kpi-value-row">
+            <span className="kpi-value" style={{ color: 'var(--danger)' }}>
+              {kpis.outOfStockProducts}
+            </span>
+          </div>
+          <span className="kpi-subtext">Zero units available</span>
+        </div>
+
+        {/* KPI 5: Orders This Month */}
+        <div className="kpi-card" onClick={() => navigate('/orders')} style={{ cursor: 'pointer' }}>
+          <div className="kpi-card-header">
+            <span className="kpi-label">{t('dashboard.kpiOrdersMonth')}</span>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)', color: '#7C3AED' }}
+            >
+              <Calendar size={18} />
+            </div>
+          </div>
+          <div className="kpi-value-row">
+            <span className="kpi-value">{kpis.ordersThisMonth}</span>
+          </div>
+          <span className="kpi-subtext">Current billing cycle</span>
+        </div>
+
+        {/* KPI 6: Estimated Inventory Value */}
+        <div
+          className="kpi-card"
+          onClick={() => navigate('/inventory')}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="kpi-card-header">
+            <span className="kpi-label">{t('dashboard.kpiEstimatedValue')}</span>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success)' }}
+            >
+              <DollarSign size={18} />
+            </div>
+          </div>
+          <div className="kpi-value-row">
+            <span className="kpi-value">${kpis.estimatedInventoryValue.toLocaleString()}</span>
+          </div>
+          <span className="kpi-subtext">At unit cost valuation</span>
         </div>
       </section>
 
-      {/* Monitoring Status & Trend Section */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-        {/* Trend Chart Panel */}
-        <div className="panel-card">
-          <div className="panel-header">
-            <div>
-              <h3 className="panel-title">Fulfillment &amp; Overdue Trends</h3>
-              <p className="panel-subtitle">
-                Historical comparison between overdue orders and fulfilled shipments
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button
-                className={`btn btn-sm ${selectedPeriod === 7 ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setSelectedPeriod(7)}
-              >
-                7 Days
-              </button>
-              <button
-                className={`btn btn-sm ${selectedPeriod === 30 ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setSelectedPeriod(30)}
-              >
-                30 Days
-              </button>
-              <button
-                className={`btn btn-sm ${selectedPeriod === 90 ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setSelectedPeriod(90)}
-              >
-                90 Days
-              </button>
-            </div>
+      {/* Inventory Health Section */}
+      <section className="card">
+        <div className="card-header">
+          <div className="card-title-group">
+            <h3>{t('dashboard.inventoryHealth')}</h3>
+            <p>Distribution of inventory variants by operational availability</p>
           </div>
-
-          {/* SVG Trend Chart */}
-          <div style={{ width: '100%', overflowX: 'auto' }}>
-            <svg
-              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-              style={{ width: '100%', maxHeight: '250px', display: 'block' }}
-            >
-              {/* Horizontal Grid lines */}
-              {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-                const y = paddingY + ratio * (chartHeight - paddingY * 2);
-                const val = Math.round(maxVal * (1 - ratio));
-                return (
-                  <g key={ratio}>
-                    <line
-                      x1={paddingX}
-                      y1={y}
-                      x2={chartWidth - paddingX}
-                      y2={y}
-                      stroke="var(--border-subtle)"
-                      strokeDasharray="4 4"
-                    />
-                    <text
-                      x={paddingX - 10}
-                      y={y + 4}
-                      fill="var(--text-muted)"
-                      fontSize="10"
-                      textAnchor="end"
-                      fontFamily="monospace"
-                    >
-                      {val}
-                    </text>
-                  </g>
-                );
-              })}
-
-              {/* Fulfilled line (Green) */}
-              {fulfilledPathData && (
-                <path
-                  d={fulfilledPathData}
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-              )}
-
-              {/* Overdue line (Red) */}
-              {overduePathData && (
-                <path
-                  d={overduePathData}
-                  fill="none"
-                  stroke="#ef4444"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-              )}
-
-              {/* Interactive Dots */}
-              {chartPoints.map((p, i) => {
-                const overdueCoord = getCoordinates(i, p.overdueCount);
-                const fulfilledCoord = getCoordinates(i, p.fulfilledCount);
-                return (
-                  <g key={p.date}>
-                    <circle
-                      cx={overdueCoord.x}
-                      cy={overdueCoord.y}
-                      r="4"
-                      fill="#ef4444"
-                      stroke="var(--bg-card)"
-                      strokeWidth="2"
-                    >
-                      <title>{`${p.date}: ${p.overdueCount} overdue`}</title>
-                    </circle>
-                    <circle
-                      cx={fulfilledCoord.x}
-                      cy={fulfilledCoord.y}
-                      r="4"
-                      fill="#10b981"
-                      stroke="var(--bg-card)"
-                      strokeWidth="2"
-                    >
-                      <title>{`${p.date}: ${p.fulfilledCount} fulfilled`}</title>
-                    </circle>
-                    {/* Date label */}
-                    {i % Math.ceil(chartPoints.length / 7) === 0 && (
-                      <text
-                        x={overdueCoord.x}
-                        y={chartHeight - 8}
-                        fill="var(--text-muted)"
-                        fontSize="10"
-                        textAnchor="middle"
-                      >
-                        {p.date.slice(5)}
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '2rem',
-              marginTop: '1rem',
-              fontSize: '0.8rem',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <span style={{ width: '12px', height: '3px', background: '#ef4444', borderRadius: '2px' }} />
-              <span style={{ color: 'var(--text-secondary)' }}>Overdue Orders</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <span style={{ width: '12px', height: '3px', background: '#10b981', borderRadius: '2px' }} />
-              <span style={{ color: 'var(--text-secondary)' }}>Fulfilled Orders</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Monitoring Status Info Card */}
-        <div
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '1.4rem 1.6rem',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '1.25rem',
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <div
-              style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: 'var(--radius-md)',
-                background: summary?.monitoringStatus.isShopifyConnected
-                  ? 'rgba(16, 185, 129, 0.15)'
-                  : 'rgba(245, 158, 11, 0.15)',
-                color: summary?.monitoringStatus.isShopifyConnected ? '#10b981' : '#f59e0b',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Activity size={22} />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Engine Status
-              </div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                {summary?.monitoringStatus.isShopifyConnected ? 'Shopify App Connected' : 'Sandbox Demo Mode'}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Active SLA Threshold
-            </div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#38bdf8' }}>
-              {summary?.monitoringStatus.thresholdHours || 24} Hours elapsed
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Email Notifications
-            </div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: summary?.monitoringStatus.emailEnabled ? '#10b981' : 'var(--text-muted)' }}>
-              {summary?.monitoringStatus.emailEnabled ? 'Enabled (Alerts Active)' : 'Disabled'}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Last Synchronized
-            </div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              {summary?.monitoringStatus.lastSyncedAt
-                ? new Date(summary.monitoringStatus.lastSyncedAt).toLocaleTimeString()
-                : 'Just now'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Overdue Orders Table */}
-      <section className="panel-card">
-        <div className="panel-header">
-          <div>
-            <h3 className="panel-title">Recent Overdue Orders</h3>
-            <p className="panel-subtitle">
-              Customer orders that have currently exceeded the configured fulfillment SLA
-            </p>
-          </div>
-
-          <button className="btn btn-secondary btn-sm" onClick={onNavigateToOrders}>
-            View All Orders &rarr;
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate('/inventory')}>
+            <span>{t('inventory.filterAll')}</span>
+            <ArrowRight size={14} />
           </button>
         </div>
+        <div className="card-body">
+          <div className="health-progress-bar">
+            <div
+              className="progress-segment progress-healthy"
+              style={{ width: `${pctHealthy}%` }}
+              title={`Healthy: ${pctHealthy}%`}
+            />
+            <div
+              className="progress-segment progress-low"
+              style={{ width: `${pctLow}%` }}
+              title={`Low Stock: ${pctLow}%`}
+            />
+            <div
+              className="progress-segment progress-out"
+              style={{ width: `${pctOut}%` }}
+              title={`Out of Stock: ${pctOut}%`}
+            />
+            <div
+              className="progress-segment progress-untracked"
+              style={{ width: `${pctUntracked}%` }}
+              title={`Untracked: ${pctUntracked}%`}
+            />
+          </div>
 
-        {recentOverdue.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
-            <CheckCircle size={36} color="#10b981" style={{ marginBottom: '0.5rem' }} />
-            <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-main)' }}>
-              All clear! No overdue orders detected.
+          <div className="health-legend">
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: 'var(--success)' }} />
+              <span>
+                {t('dashboard.healthy')}: <strong>{health.healthyCount}</strong> ({pctHealthy}%)
+              </span>
             </div>
-            <p style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>
-              All pending orders are currently within their processing threshold.
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: 'var(--warning)' }} />
+              <span>
+                {t('dashboard.lowStock')}: <strong>{health.lowStockCount}</strong> ({pctLow}%)
+              </span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: 'var(--danger)' }} />
+              <span>
+                {t('dashboard.outOfStock')}: <strong>{health.outOfStockCount}</strong> ({pctOut}%)
+              </span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot" style={{ backgroundColor: 'var(--neutral)' }} />
+              <span>
+                {t('dashboard.untracked')}: <strong>{health.untrackedCount}</strong> ({pctUntracked}
+                %)
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dashboard Grid: Sales Velocity & Top Selling */}
+      <div className="dashboard-grid">
+        {/* Sales Trend Chart */}
+        <section className="card" style={{ marginBottom: 0 }}>
+          <div className="card-header">
+            <div className="card-title-group">
+              <h3>{t('dashboard.salesTrend')}</h3>
+              <p>Daily units sold over selected reporting period</p>
+            </div>
+            <div className="tabs-group">
+              <button
+                className={`tab-pill ${selectedPeriod === 7 ? 'active' : ''}`}
+                onClick={() => setSelectedPeriod(7)}
+              >
+                {t('dashboard.days7')}
+              </button>
+              <button
+                className={`tab-pill ${selectedPeriod === 30 ? 'active' : ''}`}
+                onClick={() => setSelectedPeriod(30)}
+              >
+                {t('dashboard.days30')}
+              </button>
+              <button
+                className={`tab-pill ${selectedPeriod === 90 ? 'active' : ''}`}
+                onClick={() => setSelectedPeriod(90)}
+              >
+                {t('dashboard.days90')}
+              </button>
+            </div>
+          </div>
+          <div className="card-body">
+            {chartPoints.length > 0 ? (
+              <div style={{ width: '100%', overflowX: 'auto' }}>
+                <svg
+                  viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                >
+                  <defs>
+                    <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2563EB" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Horizontal gridlines */}
+                  {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
+                    const y = chartHeight - padY - pct * (chartHeight - padY * 2);
+                    return (
+                      <line
+                        key={idx}
+                        x1={padX}
+                        y1={y}
+                        x2={chartWidth - padX}
+                        y2={y}
+                        stroke="var(--border-subtle)"
+                        strokeDasharray="4 4"
+                      />
+                    );
+                  })}
+
+                  {/* Shaded Area */}
+                  {areaData && <path d={areaData} fill="url(#salesGradient)" />}
+
+                  {/* Trend Line */}
+                  <path
+                    d={pathData}
+                    fill="none"
+                    stroke="#2563EB"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+
+                  {/* Data Points */}
+                  {chartPoints.map((p, idx) => {
+                    const { x, y } = getCoordinates(idx, p.unitsSold);
+                    return (
+                      <circle
+                        key={idx}
+                        cx={x}
+                        cy={y}
+                        r="3.5"
+                        fill="#FFFFFF"
+                        stroke="#2563EB"
+                        strokeWidth="2"
+                      >
+                        <title>{`${p.date}: ${p.unitsSold} units ($${p.revenue})`}</title>
+                      </circle>
+                    );
+                  })}
+                </svg>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                {isLoadingTrends
+                  ? 'Loading sales velocity data...'
+                  : 'No sales velocity history recorded'}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Top Selling Products */}
+        <section className="card" style={{ marginBottom: 0 }}>
+          <div className="card-header">
+            <div className="card-title-group">
+              <h3>Top Selling Products</h3>
+              <p>Ranked by 30-day unit sales</p>
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={() => navigate('/analytics')}>
+              <span>Analytics</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
+          <div className="card-body" style={{ padding: 0 }}>
+            <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Sold (30d)</th>
+                    <th>Stock</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(summary?.topSellingProducts || []).slice(0, 5).map((p) => (
+                    <tr
+                      key={p.variantId}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => openInventoryById(p.variantId)}
+                    >
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 600 }}>{p.productTitle}</span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {p.variantTitle} ({p.sku})
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                          {p.unitsSold} units
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            fontWeight: 600,
+                            color: p.currentStock <= 4 ? 'var(--warning)' : 'var(--text-main)',
+                          }}
+                        >
+                          {p.currentStock}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Restock Recommendations Section */}
+      <section className="card" style={{ marginTop: '24px' }}>
+        <div className="card-header">
+          <div className="card-title-group">
+            <h3>Restock Recommendations</h3>
+            <p>
+              Actionable replenishment priorities calculated using sales velocity and lead time
+              horizon
             </p>
           </div>
-        ) : (
-          <div className="table-wrapper">
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate('/analytics')}>
+            <span>Full Reorder Plan</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+        <div className="card-body" style={{ padding: 0 }}>
+          <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Order</th>
-                  <th>Customer</th>
-                  <th>Order Date</th>
-                  <th>Fulfillment Status</th>
-                  <th>Overdue Duration</th>
-                  <th>Amount</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th>Product & Variant</th>
+                  <th>SKU</th>
+                  <th>Available Stock</th>
+                  <th>Daily Velocity</th>
+                  <th>Days Remaining</th>
+                  <th>Recommended Restock</th>
+                  <th>Urgency</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {recentOverdue.map((order) => (
-                  <tr key={order.id}>
-                    <td>
-                      <span style={{ fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer' }} onClick={() => onOpenOrderModal(order)}>
-                        {order.orderNumber}
-                      </span>
-                    </td>
-                    <td>{order.customerName || 'Anonymous Customer'}</td>
-                    <td>
-                      {new Date(order.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </td>
-                    <td>
-                      <span className={`badge ${order.fulfillmentStatus === 'partial' ? 'badge-warning' : 'badge-critical'}`}>
-                        {order.fulfillmentStatus === 'partial' ? 'Partially Fulfilled' : 'Unfulfilled'}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ color: 'var(--critical)', fontWeight: 700 }}>
-                        +{Math.floor(order.overdueMinutes / 60)}h {order.overdueMinutes % 60}m
-                      </span>
-                    </td>
-                    <td style={{ fontWeight: 600 }}>
-                      ${order.totalAmount.toFixed(2)}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                {(summary?.restockRecommendations || []).length > 0 ? (
+                  (summary?.restockRecommendations || []).map((rec) => (
+                    <tr key={rec.variantId}>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 600 }}>{rec.productTitle}</span>
+                          <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                            {rec.variantTitle}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <code style={{ color: 'var(--primary)', fontSize: '12px' }}>{rec.sku}</code>
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            color:
+                              rec.availableQuantity === 0 ? 'var(--danger)' : 'var(--text-main)',
+                          }}
+                        >
+                          {rec.availableQuantity} units
+                        </span>
+                      </td>
+                      <td>{rec.averageDailySales} /day</td>
+                      <td>
+                        {rec.daysRemaining !== null ? (
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              color: rec.daysRemaining <= 3 ? 'var(--danger)' : 'var(--warning)',
+                            }}
+                          >
+                            {rec.daysRemaining} days
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>Insufficient data</span>
+                        )}
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                          +{rec.recommendedQuantity} units
+                        </span>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          Est. ${rec.estimatedCost.toFixed(2)}
+                        </div>
+                      </td>
+                      <td>
+                        {rec.urgency === 'critical' ? (
+                          <span className="badge badge-out_of_stock">Critical</span>
+                        ) : rec.urgency === 'high' ? (
+                          <span className="badge badge-low_stock">High</span>
+                        ) : (
+                          <span className="badge badge-restock_soon">Medium</span>
+                        )}
+                      </td>
+                      <td>
                         <button
                           className="btn btn-secondary btn-sm"
-                          onClick={() => onOpenOrderModal(order)}
-                          title="View order line items & SLA breakdown"
+                          onClick={() => openInventoryById(rec.variantId)}
                         >
                           <Eye size={13} />
                           <span>Details</span>
                         </button>
-                        <a
-                          href={order.shopifyUrl || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-primary btn-sm"
-                          title="Fulfill order directly in Shopify Admin"
-                        >
-                          <ExternalLink size={13} />
-                          <span>Shopify</span>
-                        </a>
-                      </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}
+                    >
+                      No replenishment required at this time. All tracked inventory is healthy.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* Recent Shopify Orders Section */}
+      <section className="card">
+        <div className="card-header">
+          <div className="card-title-group">
+            <h3>Recent Orders Context</h3>
+            <p>Latest Shopify customer orders & fulfillment statuses (read-only monitoring)</p>
+          </div>
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate('/orders')}>
+            <span>View All Orders</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+        <div className="card-body" style={{ padding: 0 }}>
+          <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Order Number</th>
+                  <th>Customer</th>
+                  <th>Order Date</th>
+                  <th>Total Amount</th>
+                  <th>Financial Status</th>
+                  <th>Fulfillment Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(summary?.recentOrders || []).map((order) => (
+                  <tr key={order.id}>
+                    <td>
+                      <span style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                        {order.orderNumber}
+                      </span>
+                    </td>
+                    <td>{order.customerName || 'Guest Customer'}</td>
+                    <td style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 600 }}>
+                        ${order.totalAmount.toFixed(2)} {order.currencyCode}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className="badge"
+                        style={{
+                          backgroundColor:
+                            order.financialStatus === 'paid'
+                              ? 'var(--success-bg)'
+                              : 'var(--warning-bg)',
+                          color:
+                            order.financialStatus === 'paid' ? 'var(--success)' : 'var(--warning)',
+                        }}
+                      >
+                        {order.financialStatus}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className="badge"
+                        style={{
+                          backgroundColor:
+                            order.fulfillmentStatus === 'fulfilled'
+                              ? 'var(--success-bg)'
+                              : order.fulfillmentStatus === 'partial'
+                                ? 'var(--info-bg)'
+                                : 'var(--warning-bg)',
+                          color:
+                            order.fulfillmentStatus === 'fulfilled'
+                              ? 'var(--success)'
+                              : order.fulfillmentStatus === 'partial'
+                                ? 'var(--info)'
+                                : 'var(--warning)',
+                        }}
+                      >
+                        {order.fulfillmentStatus}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => openOrderModal(order)}
+                      >
+                        <Eye size={13} />
+                        <span>Inspect</span>
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
+        </div>
       </section>
     </div>
   );
 };
+
+export default DashboardPage;
