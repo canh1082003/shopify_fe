@@ -1,40 +1,39 @@
 import { httpClient } from '../client';
-import { Alert, PaginatedResult } from '../../types';
-import { ALERTS, ALERTS_SUMMARY, ACKNOWLEDGE_ALERT } from '../../constants/apiEndpoints';
-
-export interface GetAlertsParams {
-  severity?: string;
-  status?: string;
-  page?: number;
-  limit?: number;
-}
+import { AlertFilterQuery, PaginatedResult, StockAlert } from '../../types';
 
 export interface AlertsSummaryResult {
   totalActive: number;
-  criticalCount: number;
-  warningCount: number;
+  outOfStockCount: number;
+  lowStockCount: number;
+  restockSoonCount: number;
+  untrackedCount: number;
   acknowledgedCount: number;
-  resolvedCount: number;
 }
 
-export const getAlerts = async (params: GetAlertsParams): Promise<PaginatedResult<Alert>> => {
-  const searchParams = new URLSearchParams();
-  if (params.severity && params.severity !== 'all')
-    searchParams.append('severity', params.severity);
-  if (params.status && params.status !== 'all') searchParams.append('status', params.status);
-  if (params.page) searchParams.append('page', String(params.page));
-  if (params.limit) searchParams.append('limit', String(params.limit));
+export type GetAlertsParams = AlertFilterQuery;
 
-  const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
-  return httpClient.request<PaginatedResult<Alert>>(`${ALERTS}${qs}`);
-};
+export const alertsApi = {
+  getAlerts: async (query: AlertFilterQuery = {}): Promise<PaginatedResult<StockAlert>> => {
+    const params = new URLSearchParams();
+    if (query.alertType && query.alertType !== 'all') params.append('alertType', query.alertType);
+    if (query.status && query.status !== 'all') params.append('status', query.status);
+    if (query.page) params.append('page', String(query.page));
+    if (query.limit) params.append('limit', String(query.limit));
 
-export const getAlertsSummary = async (): Promise<AlertsSummaryResult> => {
-  return httpClient.request<AlertsSummaryResult>(ALERTS_SUMMARY);
-};
+    const qs = params.toString();
+    const endpoint = `/alerts${qs ? `?${qs}` : ''}`;
+    return httpClient.get<PaginatedResult<StockAlert>>(endpoint);
+  },
 
-export const acknowledgeAlert = async (alertId: string): Promise<Alert> => {
-  return httpClient.request<Alert>(ACKNOWLEDGE_ALERT(alertId), {
-    method: 'PATCH',
-  });
+  getAlertsSummary: async (): Promise<AlertsSummaryResult> => {
+    return httpClient.get<AlertsSummaryResult>('/alerts/summary');
+  },
+
+  acknowledgeAlert: async (id: string): Promise<StockAlert> => {
+    return httpClient.patch<StockAlert>(`/alerts/${encodeURIComponent(id)}/acknowledge`);
+  },
+
+  dismissAlert: async (id: string): Promise<StockAlert> => {
+    return httpClient.patch<StockAlert>(`/alerts/${encodeURIComponent(id)}/dismiss`);
+  },
 };

@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Home } from 'lucide-react';
+import { useTranslation } from '../i18n';
 
 export const NotFound404: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div
@@ -34,18 +36,18 @@ export const NotFound404: React.FC = () => {
       </div>
 
       <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-        404 - Trang Không Tồn Tại
+        {t('errors.pageNotFound')}
       </h1>
       <p style={{ color: 'var(--text-secondary)', maxWidth: '440px', marginBottom: '1.75rem' }}>
-        Đường dẫn bạn yêu cầu không tồn tại hoặc đã được di chuyển trong hệ thống Order Watchdog.
+        {t('errors.pageNotFoundDesc')}
       </p>
 
       <div style={{ display: 'flex', gap: '1rem' }}>
         <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-          <ArrowLeft size={16} /> Quay lại
+          <ArrowLeft size={16} /> {t('errors.back')}
         </button>
         <button className="btn btn-primary" onClick={() => navigate('/')}>
-          <Home size={16} /> Về Dashboard
+          <Home size={16} /> {t('errors.backHome')}
         </button>
       </div>
     </div>

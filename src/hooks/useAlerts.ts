@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api, AlertsSummaryResult } from '../api';
-import { Alert } from '../types';
+import { StockAlert } from '../types';
 import { toast } from 'sonner';
 
 export function useAlerts() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<StockAlert[]>([]);
   const [summary, setSummary] = useState<AlertsSummaryResult | null>(null);
-  const [severityFilter, setSeverityFilter] = useState('all');
+  const [alertTypeFilter, setAlertTypeFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +16,7 @@ export function useAlerts() {
       setIsLoading(true);
       const [alertsRes, summaryRes] = await Promise.all([
         api.alerts.getAlerts({
-          severity: severityFilter,
+          alertType: alertTypeFilter as any,
           page,
           limit: 10,
         }),
@@ -31,14 +31,14 @@ export function useAlerts() {
     } finally {
       setIsLoading(false);
     }
-  }, [severityFilter, page]);
+  }, [alertTypeFilter, page]);
 
   useEffect(() => {
     fetchAlerts();
   }, [fetchAlerts]);
 
   const acknowledgeAlert = useCallback(
-    async (alertId: string, orderNumber: string) => {
+    async (alertId: string, skuOrTitle: string) => {
       try {
         await api.alerts.acknowledgeAlert(alertId);
         setAlerts((prev) =>
@@ -56,7 +56,7 @@ export function useAlerts() {
           });
         }
         toast.info('Đã xác nhận cảnh báo', {
-          description: `Cảnh báo đơn hàng #${orderNumber} đã được ghi nhận.`,
+          description: `Cảnh báo cho ${skuOrTitle} đã được ghi nhận.`,
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Lỗi xác nhận cảnh báo';
@@ -69,9 +69,9 @@ export function useAlerts() {
   return {
     alerts,
     summary,
-    severityFilter,
-    setSeverityFilter: (s: string) => {
-      setSeverityFilter(s);
+    alertTypeFilter,
+    setAlertTypeFilter: (s: string) => {
+      setAlertTypeFilter(s);
       setPage(1);
     },
     page,

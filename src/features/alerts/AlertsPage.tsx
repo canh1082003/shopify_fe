@@ -1,385 +1,394 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import {
   Bell,
   AlertTriangle,
   AlertOctagon,
+  Clock,
+  HelpCircle,
   CheckCircle,
   Eye,
   Check,
   ChevronLeft,
   ChevronRight,
+  X,
 } from 'lucide-react';
-import { useOutletContext } from 'react-router-dom';
-import { Alert } from '../../types';
+import { StockAlert, AlertType, AlertStatus } from '../../types';
 import { api } from '../../api';
 import { MainLayoutContextType } from '../../layouts/MainLayout';
+import { toast } from 'sonner';
+import { useTranslation } from '../../i18n';
 
-export interface AlertsPageProps {
-  onOpenOrderModalById?: (orderId: string) => void;
-  onToast?: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
-}
-
-export const AlertsPage: React.FC<AlertsPageProps> = (props) => {
+export const AlertsPage: React.FC = () => {
+  const { t } = useTranslation();
   const context = useOutletContext<MainLayoutContextType | null>();
-  const onOpenOrderModalById = props.onOpenOrderModalById || context?.openOrderById || (() => {});
-  const onToast = props.onToast || context?.onToast || (() => {});
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'resolved'>(
-    'all'
-  );
+  const openInventoryById = context?.openInventoryById || (async () => {});
+  const refreshSummary = context?.refreshSummary || (async () => {});
+
+  const [alerts, setAlerts] = useState<StockAlert[]>([]);
+  const [alertTypeFilter, setAlertTypeFilter] = useState<'all' | AlertType>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | AlertStatus>('all');
   const [summary, setSummary] = useState<{
     totalActive: number;
-    criticalCount: number;
-    warningCount: number;
+    outOfStockCount: number;
+    lowStockCount: number;
+    restockSoonCount: number;
+    untrackedCount: number;
     acknowledgedCount: number;
-    resolvedCount: number;
   } | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchAlerts = useCallback(async () => {
     try {
       setIsLoading(true);
       const [listRes, summaryRes] = await Promise.all([
-        api.getAlerts({
-          severity: severityFilter,
+        api.alerts.getAlerts({
+          alertType: alertTypeFilter,
+          status: statusFilter,
           page,
           limit: 10,
         }),
-        api.getAlertsSummary(),
+        api.alerts.getAlertsSummary(),
       ]);
       setAlerts(listRes.items);
       setTotalPages(listRes.totalPages);
+      setTotalCount(listRes.total);
       setSummary(summaryRes);
     } catch (err) {
-      console.error('Failed to load alerts:', err);
+      console.error('Failed to load stock alerts:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [severityFilter, page]);
+  }, [alertTypeFilter, statusFilter, page]);
 
   useEffect(() => {
     fetchAlerts();
   }, [fetchAlerts]);
 
-  const handleAcknowledge = async (alertId: string, orderNumber: string) => {
+  const handleAcknowledge = async (alertId: string) => {
     try {
-      await api.acknowledgeAlert(alertId);
-      setAlerts((prev) =>
-        prev.map((a) =>
-          a.id === alertId
-            ? { ...a, status: 'acknowledged' as const, acknowledgedAt: new Date().toISOString() }
-            : a
-        )
-      );
-      if (summary) {
-        setSummary({
-          ...summary,
-          totalActive: Math.max(0, summary.totalActive - 1),
-          acknowledgedCount: summary.acknowledgedCount + 1,
-        });
-      }
-      onToast(
-        'info',
-        'Alert Acknowledged',
-        `Alert for order ${orderNumber} acknowledged. Note: Order remains unfulfilled until completed in Shopify.`
-      );
+      await api.alerts.acknowledgeAlert(alertId);
+      toast.success('Đã xác nhận cảnh báo', {
+        description: 'Cảnh báo đã được ghi nhận. Số lượng tồn kho trên Shopify được giữ nguyên.',
+      });
+      fetchAlerts();
+      refreshSummary();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to acknowledge alert';
-      onToast('error', 'Error', msg);
+      const msg = err instanceof Error ? err.message : 'Lỗi xác nhận';
+      toast.error('Xác nhận thất bại', { description: msg });
+    }
+  };
+
+  const handleDismiss = async (alertId: string) => {
+    try {
+      await api.alerts.dismissAlert(alertId);
+      toast.info('Đã ẩn cảnh báo');
+      fetchAlerts();
+      refreshSummary();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Lỗi xử lý';
+      toast.error('Không thể ẩn cảnh báo', { description: msg });
+    }
+  };
+
+  const getAlertBadge = (type: AlertType) => {
+    switch (type) {
+      case 'out_of_stock':
+        return <span className="badge badge-out_of_stock"><AlertOctagon size={12} /> Out of Stock</span>;
+      case 'low_stock':
+        return <span className="badge badge-low_stock"><AlertTriangle size={12} /> Low Stock</span>;
+      case 'restock_soon':
+        return <span className="badge badge-restock_soon"><Clock size={12} /> Restock Soon</span>;
+      case 'untracked':
+        return <span className="badge badge-untracked"><HelpCircle size={12} /> Untracked</span>;
     }
   };
 
   return (
     <div>
-      {/* Alert Center Metrics Cards */}
-      <section className="metrics-grid">
-        <div className="metric-card">
-          <div className="metric-card-top">
-            <span className="metric-label">Active Overdue Alerts</span>
-            <div
-              className="metric-icon-box"
-              style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}
-            >
-              <Bell size={20} />
-            </div>
+      {/* Alert KPI Summary Cards */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gap: '14px',
+          marginBottom: '24px',
+        }}
+      >
+        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setAlertTypeFilter('all')}>
+          <div className="kpi-card-header">
+            <span className="kpi-label">{t('alerts.activeCount')}</span>
+            <Bell size={18} style={{ color: 'var(--primary)' }} />
           </div>
-          <div className="metric-value-row">
-            <span
-              className="metric-value"
-              style={{ color: (summary?.totalActive ?? 0) > 0 ? '#ef4444' : 'inherit' }}
-            >
-              {summary?.totalActive ?? '—'}
-            </span>
+          <div className="kpi-value-row">
+            <span className="kpi-value">{summary?.totalActive ?? 0}</span>
           </div>
-          <span className="metric-desc">Unacknowledged active fulfillment alerts</span>
+          <span className="kpi-subtext">Requiring merchant review</span>
         </div>
 
-        <div className="metric-card">
-          <div className="metric-card-top">
-            <span className="metric-label">Critical Overdue</span>
-            <div
-              className="metric-icon-box"
-              style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}
-            >
-              <AlertOctagon size={20} />
-            </div>
+        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setAlertTypeFilter('out_of_stock')}>
+          <div className="kpi-card-header">
+            <span className="kpi-label">{t('dashboard.outOfStock')}</span>
+            <AlertOctagon size={18} style={{ color: 'var(--danger)' }} />
           </div>
-          <div className="metric-value-row">
-            <span className="metric-value" style={{ color: '#ef4444' }}>
-              {summary?.criticalCount ?? '—'}
+          <div className="kpi-value-row">
+            <span className="kpi-value" style={{ color: 'var(--danger)' }}>
+              {summary?.outOfStockCount ?? 0}
             </span>
           </div>
-          <span className="metric-desc">Orders strictly past configured SLA deadline</span>
+          <span className="kpi-subtext">Immediate action needed</span>
         </div>
 
-        <div className="metric-card">
-          <div className="metric-card-top">
-            <span className="metric-label">Warning Window</span>
-            <div
-              className="metric-icon-box"
-              style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}
-            >
-              <AlertTriangle size={20} />
-            </div>
+        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setAlertTypeFilter('low_stock')}>
+          <div className="kpi-card-header">
+            <span className="kpi-label">{t('dashboard.lowStock')}</span>
+            <AlertTriangle size={18} style={{ color: 'var(--warning)' }} />
           </div>
-          <div className="metric-value-row">
-            <span className="metric-value" style={{ color: '#f59e0b' }}>
-              {summary?.warningCount ?? '—'}
+          <div className="kpi-value-row">
+            <span className="kpi-value" style={{ color: 'var(--warning)' }}>
+              {summary?.lowStockCount ?? 0}
             </span>
           </div>
-          <span className="metric-desc">Approaching SLA threshold (lead time window)</span>
+          <span className="kpi-subtext">Under low threshold</span>
         </div>
 
-        <div className="metric-card">
-          <div className="metric-card-top">
-            <span className="metric-label">Resolved Shipments</span>
-            <div
-              className="metric-icon-box"
-              style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}
-            >
-              <CheckCircle size={20} />
-            </div>
+        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setAlertTypeFilter('restock_soon')}>
+          <div className="kpi-card-header">
+            <span className="kpi-label">{t('alerts.filterSoon')}</span>
+            <Clock size={18} style={{ color: 'var(--info)' }} />
           </div>
-          <div className="metric-value-row">
-            <span className="metric-value" style={{ color: '#10b981' }}>
-              {summary?.resolvedCount ?? '—'}
+          <div className="kpi-value-row">
+            <span className="kpi-value" style={{ color: 'var(--info)' }}>
+              {summary?.restockSoonCount ?? 0}
             </span>
           </div>
-          <span className="metric-desc">Fulfillments completed and verified</span>
+          <span className="kpi-subtext">Within lead-time horizon</span>
         </div>
-      </section>
 
-      {/* Filter Tabs */}
-      <div className="filter-tabs-row">
-        <div className="tabs-group">
-          <button
-            className={`tab-btn ${severityFilter === 'all' ? 'active' : ''}`}
-            onClick={() => {
-              setSeverityFilter('all');
-              setPage(1);
-            }}
-          >
-            All Alerts
-          </button>
-          <button
-            className={`tab-btn ${severityFilter === 'critical' ? 'active' : ''}`}
-            onClick={() => {
-              setSeverityFilter('critical');
-              setPage(1);
-            }}
-          >
-            Critical
-          </button>
-          <button
-            className={`tab-btn ${severityFilter === 'warning' ? 'active' : ''}`}
-            onClick={() => {
-              setSeverityFilter('warning');
-              setPage(1);
-            }}
-          >
-            Warning
-          </button>
-          <button
-            className={`tab-btn ${severityFilter === 'resolved' ? 'active' : ''}`}
-            onClick={() => {
-              setSeverityFilter('resolved');
-              setPage(1);
-            }}
-          >
-            Resolved
-          </button>
+        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setStatusFilter('acknowledged')}>
+          <div className="kpi-card-header">
+            <span className="kpi-label">{t('alerts.acknowledged')}</span>
+            <CheckCircle size={18} style={{ color: 'var(--success)' }} />
+          </div>
+          <div className="kpi-value-row">
+            <span className="kpi-value">{summary?.acknowledgedCount ?? 0}</span>
+          </div>
+          <span className="kpi-subtext">Reviewed by merchant</span>
         </div>
       </div>
 
-      {/* Alerts Table Panel */}
-      <div className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Alert Severity</th>
-                <th>Reason / SLA Status</th>
-                <th>Elapsed Duration</th>
-                <th>Triggered At</th>
-                <th>Alert Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}
-                  >
-                    Loading alert status...
-                  </td>
-                </tr>
-              ) : alerts.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}
-                  >
-                    <div
-                      style={{
-                        fontSize: '1.05rem',
-                        fontWeight: 600,
-                        color: 'var(--text-main)',
-                        marginBottom: '0.25rem',
-                      }}
-                    >
-                      No alerts matching this filter
-                    </div>
-                    <p style={{ fontSize: '0.85rem' }}>
-                      All orders are complying with SLA requirements.
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                alerts.map((alert) => (
-                  <tr key={alert.id}>
-                    <td>
-                      <span
-                        style={{ fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer' }}
-                        onClick={() => onOpenOrderModalById(alert.orderId)}
-                      >
-                        {alert.orderNumber}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          alert.severity === 'critical'
-                            ? 'badge-critical'
-                            : alert.severity === 'warning'
-                              ? 'badge-warning'
-                              : 'badge-success'
-                        }`}
-                      >
-                        {alert.severity === 'critical' && <AlertOctagon size={12} />}
-                        {alert.severity === 'warning' && <AlertTriangle size={12} />}
-                        {alert.severity === 'resolved' && <CheckCircle size={12} />}
-                        {alert.severity}
-                      </span>
-                    </td>
-                    <td style={{ maxWidth: '300px', fontSize: '0.825rem' }}>{alert.reason}</td>
-                    <td
-                      style={{
-                        fontWeight: 600,
-                        color: alert.severity === 'critical' ? 'var(--critical)' : 'inherit',
-                      }}
-                    >
-                      {alert.elapsedHours}h elapsed
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>
-                      {new Date(alert.createdAt).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </td>
-                    <td>
-                      <span
-                        className="badge"
-                        style={{
-                          background:
-                            alert.status === 'active'
-                              ? 'rgba(239, 68, 68, 0.1)'
-                              : 'rgba(255, 255, 255, 0.05)',
-                          color: alert.status === 'active' ? '#f87171' : 'var(--text-muted)',
-                          textTransform: 'capitalize',
-                        }}
-                      >
-                        {alert.status}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
-                        {alert.status === 'active' && (
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => handleAcknowledge(alert.id, alert.orderNumber)}
-                            title="Acknowledge alert without falsely marking order fulfilled"
-                          >
-                            <Check size={13} />
-                            <span>Acknowledge</span>
-                          </button>
-                        )}
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => onOpenOrderModalById(alert.orderId)}
-                          title="View order details"
-                        >
-                          <Eye size={13} />
-                          <span>View</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Filter Tabs */}
+      <div className="controls-bar">
+        <div className="tabs-group">
+          <button
+            className={`tab-pill ${alertTypeFilter === 'all' ? 'active' : ''}`}
+            onClick={() => {
+              setAlertTypeFilter('all');
+              setPage(1);
+            }}
+          >
+            {t('alerts.filterAll')}
+          </button>
+          <button
+            className={`tab-pill ${alertTypeFilter === 'out_of_stock' ? 'active' : ''}`}
+            onClick={() => {
+              setAlertTypeFilter('out_of_stock');
+              setPage(1);
+            }}
+          >
+            {t('alerts.filterOut')}
+          </button>
+          <button
+            className={`tab-pill ${alertTypeFilter === 'low_stock' ? 'active' : ''}`}
+            onClick={() => {
+              setAlertTypeFilter('low_stock');
+              setPage(1);
+            }}
+          >
+            {t('alerts.filterLow')}
+          </button>
+          <button
+            className={`tab-pill ${alertTypeFilter === 'restock_soon' ? 'active' : ''}`}
+            onClick={() => {
+              setAlertTypeFilter('restock_soon');
+              setPage(1);
+            }}
+          >
+            {t('alerts.filterSoon')}
+          </button>
+          <button
+            className={`tab-pill ${alertTypeFilter === 'untracked' ? 'active' : ''}`}
+            onClick={() => {
+              setAlertTypeFilter('untracked');
+              setPage(1);
+            }}
+          >
+            Untracked
+          </button>
         </div>
 
-        {/* Pagination Row */}
-        <div
-          className="pagination-row"
-          style={{ padding: '1rem 1.5rem', background: 'var(--bg-card-subtle)' }}
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value as any);
+            setPage(1);
+          }}
+          className="search-input"
+          style={{ width: 'auto', paddingLeft: '12px', cursor: 'pointer' }}
         >
-          <div>
-            Showing <strong>{alerts.length}</strong> alerts
-          </div>
+          <option value="all">All Statuses</option>
+          <option value="active">Active Only</option>
+          <option value="acknowledged">Acknowledged</option>
+          <option value="resolved">Resolved</option>
+        </select>
+      </div>
 
+      {/* Alerts Table */}
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Product & Variant</th>
+              <th>SKU</th>
+              <th>Location</th>
+              <th>Alert Category</th>
+              <th>Current Qty</th>
+              <th>Threshold</th>
+              <th>Runway</th>
+              <th>Reason & Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <tr>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                  Loading stock alerts...
+                </td>
+              </tr>
+            ) : alerts.length === 0 ? (
+              <tr>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                  No stock alerts found for the current selection.
+                </td>
+              </tr>
+            ) : (
+              alerts.map((alert) => (
+                <tr key={alert.id}>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 600 }}>{alert.productTitle}</span>
+                      <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                        {alert.variantTitle}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <code style={{ color: 'var(--primary)', fontWeight: 600 }}>{alert.sku}</code>
+                  </td>
+                  <td style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                    {alert.locationName}
+                  </td>
+                  <td>{getAlertBadge(alert.alertType)}</td>
+                  <td>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: alert.currentQuantity === 0 ? 'var(--danger)' : 'var(--text-main)',
+                      }}
+                    >
+                      {alert.currentQuantity}
+                    </span>
+                  </td>
+                  <td>{alert.threshold}</td>
+                  <td>
+                    {alert.estimatedDaysRemaining !== null ? (
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: alert.estimatedDaysRemaining <= 3 ? 'var(--danger)' : 'var(--warning)',
+                        }}
+                      >
+                        {alert.estimatedDaysRemaining} days
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>—</span>
+                    )}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '12.5px' }}>{alert.reason}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        State: <strong>{alert.status}</strong> • {new Date(alert.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => openInventoryById(alert.variantId)}
+                        title="View inventory details and reorder recommendations"
+                      >
+                        <Eye size={13} />
+                        <span>View</span>
+                      </button>
+
+                      {alert.status === 'active' && (
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => handleAcknowledge(alert.id)}
+                          title="Acknowledge alert without modifying Shopify stock"
+                        >
+                          <Check size={13} />
+                          <span>Acknowledge</span>
+                        </button>
+                      )}
+
+                      {alert.status !== 'resolved' && (
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleDismiss(alert.id)}
+                          title="Dismiss alert"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+
+        {/* Server Pagination */}
+        <div className="pagination-bar">
+          <div>
+            Showing <strong>{alerts.length}</strong> of <strong>{totalCount}</strong> alerts
+          </div>
           <div className="pagination-actions">
             <button
               className="btn btn-secondary btn-sm"
               disabled={page <= 1 || isLoading}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              <ChevronLeft size={14} /> Previous
+              <ChevronLeft size={14} />
+              <span>Previous</span>
             </button>
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0 0.5rem',
-                fontSize: '0.85rem',
-              }}
-            >
+            <span style={{ padding: '0 8px', fontWeight: 600 }}>
               Page {page} of {totalPages}
             </span>
             <button
               className="btn btn-secondary btn-sm"
               disabled={page >= totalPages || isLoading}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => setPage((p) => p + 1)}
             >
-              Next <ChevronRight size={14} />
+              <span>Next</span>
+              <ChevronRight size={14} />
             </button>
           </div>
         </div>
@@ -387,3 +396,5 @@ export const AlertsPage: React.FC<AlertsPageProps> = (props) => {
     </div>
   );
 };
+
+export default AlertsPage;

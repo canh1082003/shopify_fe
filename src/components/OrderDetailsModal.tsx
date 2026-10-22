@@ -276,7 +276,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
             Close
           </button>
           <a
-            href={order.shopifyUrl || `https://admin.shopify.com/store/quickstart-watchdog/orders`}
+            href={order.shopifyUrl || `https://admin.shopify.com/store/quickstart-shoes/orders`}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-primary"

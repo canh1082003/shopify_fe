@@ -224,17 +224,64 @@ export class ApiClient {
         throw apiErr;
       }
 
-      return json.data;
+      return json.data as T;
     } catch (err: unknown) {
       if (err instanceof Error && (err as Error & { handled?: boolean }).handled) {
         throw err;
       }
-      const networkMsg = 'Không thể kết nối đến máy chủ Order Watchdog Backend (Network Error)';
+      const networkMsg = 'Không thể kết nối đến máy chủ StockPilot Backend (Network Error)';
       if (!silent) {
         toast.error('Lỗi kết nối mạng', { description: networkMsg });
       }
       throw new Error(networkMsg, { cause: err });
     }
+  }
+
+  public async get<T>(endpoint: string, silent = false): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET' }, false, silent);
+  }
+
+  public async post<T>(endpoint: string, body?: any, silent = false): Promise<T> {
+    return this.request<T>(
+      endpoint,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      false,
+      silent
+    );
+  }
+
+  public async put<T>(endpoint: string, body?: any, silent = false): Promise<T> {
+    return this.request<T>(
+      endpoint,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      false,
+      silent
+    );
+  }
+
+  public async patch<T>(endpoint: string, body?: any, silent = false): Promise<T> {
+    return this.request<T>(
+      endpoint,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      false,
+      silent
+    );
+  }
+
+  public async delete<T>(endpoint: string, silent = false): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' }, false, silent);
   }
 }
 
