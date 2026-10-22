@@ -21,7 +21,9 @@ export interface MainLayoutContextType {
 export const MainLayout: React.FC = () => {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItemDetail | null>(null);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItemDetail | null>(
+    null
+  );
   const [isSyncing, setIsSyncing] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {

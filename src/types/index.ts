@@ -1,17 +1,7 @@
 export type FinancialStatus =
-  | 'paid'
-  | 'authorized'
-  | 'pending'
-  | 'partially_refunded'
-  | 'refunded'
-  | 'voided';
+  'paid' | 'authorized' | 'pending' | 'partially_refunded' | 'refunded' | 'voided';
 
-export type FulfillmentStatus =
-  | 'unfulfilled'
-  | 'partial'
-  | 'fulfilled'
-  | 'restocked'
-  | 'cancelled';
+export type FulfillmentStatus = 'unfulfilled' | 'partial' | 'fulfilled' | 'restocked' | 'cancelled';
 
 export interface LineItem {
   id: string;
@@ -49,18 +39,9 @@ export interface Order {
   updatedAt: string;
 }
 
-export type StockStatus =
-  | 'healthy'
-  | 'low_stock'
-  | 'out_of_stock'
-  | 'restock_soon'
-  | 'untracked';
+export type StockStatus = 'healthy' | 'low_stock' | 'out_of_stock' | 'restock_soon' | 'untracked';
 
-export type AlertType =
-  | 'low_stock'
-  | 'out_of_stock'
-  | 'restock_soon'
-  | 'untracked';
+export type AlertType = 'low_stock' | 'out_of_stock' | 'restock_soon' | 'untracked';
 
 export type AlertStatus = 'active' | 'acknowledged' | 'resolved';
 
@@ -348,10 +329,4 @@ export interface ShopifyIntegrationStatus {
 }
 
 export type NavigationTab =
-  | 'dashboard'
-  | 'inventory'
-  | 'orders'
-  | 'alerts'
-  | 'analytics'
-  | 'settings';
-
+  'dashboard' | 'inventory' | 'orders' | 'alerts' | 'analytics' | 'settings';

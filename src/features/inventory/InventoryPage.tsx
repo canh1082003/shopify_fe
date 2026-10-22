@@ -27,7 +27,9 @@ export const InventoryPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | StockStatus>('all');
   const [search, setSearch] = useState('');
   const [locationId, setLocationId] = useState('all');
-  const [sortBy, setSortBy] = useState<'quantity' | 'salesVelocity' | 'daysRemaining' | 'name'>('quantity');
+  const [sortBy, setSortBy] = useState<'quantity' | 'salesVelocity' | 'daysRemaining' | 'name'>(
+    'quantity'
+  );
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -78,15 +80,35 @@ export const InventoryPage: React.FC = () => {
   const getStatusBadge = (status: StockStatus) => {
     switch (status) {
       case 'healthy':
-        return <span className="badge badge-healthy"><CheckCircle size={12} /> Healthy</span>;
+        return (
+          <span className="badge badge-healthy">
+            <CheckCircle size={12} /> Healthy
+          </span>
+        );
       case 'low_stock':
-        return <span className="badge badge-low_stock"><AlertTriangle size={12} /> Low Stock</span>;
+        return (
+          <span className="badge badge-low_stock">
+            <AlertTriangle size={12} /> Low Stock
+          </span>
+        );
       case 'out_of_stock':
-        return <span className="badge badge-out_of_stock"><AlertTriangle size={12} /> Out of Stock</span>;
+        return (
+          <span className="badge badge-out_of_stock">
+            <AlertTriangle size={12} /> Out of Stock
+          </span>
+        );
       case 'restock_soon':
-        return <span className="badge badge-restock_soon"><Clock size={12} /> Restock Soon</span>;
+        return (
+          <span className="badge badge-restock_soon">
+            <Clock size={12} /> Restock Soon
+          </span>
+        );
       case 'untracked':
-        return <span className="badge badge-untracked"><HelpCircle size={12} /> Untracked</span>;
+        return (
+          <span className="badge badge-untracked">
+            <HelpCircle size={12} /> Untracked
+          </span>
+        );
     }
   };
 
@@ -109,7 +131,9 @@ export const InventoryPage: React.FC = () => {
       >
         <Info size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
         <span>
-          <strong>Shopify Synchronized (Read-Only):</strong> Inventory quantities are mirrored in real time from Shopify. StockPilot focuses on velocity calculations, stockout prediction, and actionable reorder guidance without modifying your store inventory.
+          <strong>Shopify Synchronized (Read-Only):</strong> Inventory quantities are mirrored in
+          real time from Shopify. StockPilot focuses on velocity calculations, stockout prediction,
+          and actionable reorder guidance without modifying your store inventory.
         </span>
       </div>
 
@@ -236,27 +260,45 @@ export const InventoryPage: React.FC = () => {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                <td
+                  colSpan={9}
+                  style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}
+                >
                   Loading inventory catalog from backend...
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                <td
+                  colSpan={9}
+                  style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}
+                >
                   No inventory items match the selected filter.
                 </td>
               </tr>
             ) : (
               items.map((item) => (
-                <tr key={item.id} style={{ cursor: 'pointer' }} onClick={() => openInventoryModal(item)}>
+                <tr
+                  key={item.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => openInventoryModal(item)}
+                >
                   <td>
                     <div className="product-cell">
                       {item.productImage ? (
-                        <img src={item.productImage} alt={item.productTitle} className="product-thumb" />
+                        <img
+                          src={item.productImage}
+                          alt={item.productTitle}
+                          className="product-thumb"
+                        />
                       ) : (
                         <div
                           className="product-thumb"
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
                         >
                           <Package size={18} style={{ color: 'var(--text-muted)' }} />
                         </div>
@@ -268,7 +310,9 @@ export const InventoryPage: React.FC = () => {
                     </div>
                   </td>
                   <td>
-                    <code style={{ color: 'var(--primary)', fontWeight: 600 }}>{item.sku || '—'}</code>
+                    <code style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                      {item.sku || '—'}
+                    </code>
                   </td>
                   <td style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
                     {item.locationName}
@@ -302,8 +346,8 @@ export const InventoryPage: React.FC = () => {
                             item.daysRemaining <= 3
                               ? 'var(--danger)'
                               : item.daysRemaining <= 7
-                              ? 'var(--warning)'
-                              : 'var(--text-main)',
+                                ? 'var(--warning)'
+                                : 'var(--text-main)',
                         }}
                       >
                         {item.daysRemaining} days

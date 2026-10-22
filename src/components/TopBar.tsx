@@ -110,7 +110,9 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <span className={`status-dot ${isConnected ? 'connected' : 'demo'}`} />
           <ShoppingBag size={14} />
-          <span>{isConnected ? shopDomain : `${shopDomain.split('.')[0]} (${t('common.demoMode')})`}</span>
+          <span>
+            {isConnected ? shopDomain : `${shopDomain.split('.')[0]} (${t('common.demoMode')})`}
+          </span>
         </div>
 
         {/* Last Sync Indicator */}

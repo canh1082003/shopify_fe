@@ -61,7 +61,10 @@ export const DashboardPage: React.FC = () => {
     totalTracked: 11,
   };
 
-  const totalTrackedVariants = Math.max(1, health.healthyCount + health.lowStockCount + health.outOfStockCount + health.untrackedCount);
+  const totalTrackedVariants = Math.max(
+    1,
+    health.healthyCount + health.lowStockCount + health.outOfStockCount + health.untrackedCount
+  );
   const pctHealthy = Math.round((health.healthyCount / totalTrackedVariants) * 100);
   const pctLow = Math.round((health.lowStockCount / totalTrackedVariants) * 100);
   const pctOut = Math.round((health.outOfStockCount / totalTrackedVariants) * 100);
@@ -88,19 +91,27 @@ export const DashboardPage: React.FC = () => {
     })
     .join(' ');
 
-  const areaData = chartPoints.length > 0
-    ? `${pathData} L ${getCoordinates(chartPoints.length - 1, 0).x} ${chartHeight - padY} L ${getCoordinates(0, 0).x} ${chartHeight - padY} Z`
-    : '';
+  const areaData =
+    chartPoints.length > 0
+      ? `${pathData} L ${getCoordinates(chartPoints.length - 1, 0).x} ${chartHeight - padY} L ${getCoordinates(0, 0).x} ${chartHeight - padY} Z`
+      : '';
 
   return (
     <div>
       {/* 6 KPI Cards Grid */}
       <section className="kpis-grid">
         {/* KPI 1: Total Products */}
-        <div className="kpi-card" onClick={() => navigate('/inventory')} style={{ cursor: 'pointer' }}>
+        <div
+          className="kpi-card"
+          onClick={() => navigate('/inventory')}
+          style={{ cursor: 'pointer' }}
+        >
           <div className="kpi-card-header">
             <span className="kpi-label">{t('dashboard.kpiTotalProducts')}</span>
-            <div className="kpi-icon-box" style={{ backgroundColor: 'var(--primary-subtle)', color: 'var(--primary)' }}>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'var(--primary-subtle)', color: 'var(--primary)' }}
+            >
               <Package size={18} />
             </div>
           </div>
@@ -111,10 +122,17 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* KPI 2: Total Inventory Units */}
-        <div className="kpi-card" onClick={() => navigate('/inventory')} style={{ cursor: 'pointer' }}>
+        <div
+          className="kpi-card"
+          onClick={() => navigate('/inventory')}
+          style={{ cursor: 'pointer' }}
+        >
           <div className="kpi-card-header">
             <span className="kpi-label">{t('dashboard.kpiTotalUnits')}</span>
-            <div className="kpi-icon-box" style={{ backgroundColor: 'rgba(2, 132, 199, 0.1)', color: '#0284C7' }}>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'rgba(2, 132, 199, 0.1)', color: '#0284C7' }}
+            >
               <Boxes size={18} />
             </div>
           </div>
@@ -128,7 +146,10 @@ export const DashboardPage: React.FC = () => {
         <div className="kpi-card" onClick={() => navigate('/alerts')} style={{ cursor: 'pointer' }}>
           <div className="kpi-card-header">
             <span className="kpi-label">{t('dashboard.kpiLowStock')}</span>
-            <div className="kpi-icon-box" style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning)' }}>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning)' }}
+            >
               <AlertTriangle size={18} />
             </div>
           </div>
@@ -144,7 +165,10 @@ export const DashboardPage: React.FC = () => {
         <div className="kpi-card" onClick={() => navigate('/alerts')} style={{ cursor: 'pointer' }}>
           <div className="kpi-card-header">
             <span className="kpi-label">{t('dashboard.kpiOutOfStock')}</span>
-            <div className="kpi-icon-box" style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger)' }}>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger)' }}
+            >
               <AlertOctagon size={18} />
             </div>
           </div>
@@ -160,7 +184,10 @@ export const DashboardPage: React.FC = () => {
         <div className="kpi-card" onClick={() => navigate('/orders')} style={{ cursor: 'pointer' }}>
           <div className="kpi-card-header">
             <span className="kpi-label">{t('dashboard.kpiOrdersMonth')}</span>
-            <div className="kpi-icon-box" style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)', color: '#7C3AED' }}>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)', color: '#7C3AED' }}
+            >
               <Calendar size={18} />
             </div>
           </div>
@@ -171,10 +198,17 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* KPI 6: Estimated Inventory Value */}
-        <div className="kpi-card" onClick={() => navigate('/inventory')} style={{ cursor: 'pointer' }}>
+        <div
+          className="kpi-card"
+          onClick={() => navigate('/inventory')}
+          style={{ cursor: 'pointer' }}
+        >
           <div className="kpi-card-header">
             <span className="kpi-label">{t('dashboard.kpiEstimatedValue')}</span>
-            <div className="kpi-icon-box" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success)' }}>
+            <div
+              className="kpi-icon-box"
+              style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success)' }}
+            >
               <DollarSign size={18} />
             </div>
           </div>
@@ -199,28 +233,53 @@ export const DashboardPage: React.FC = () => {
         </div>
         <div className="card-body">
           <div className="health-progress-bar">
-            <div className="progress-segment progress-healthy" style={{ width: `${pctHealthy}%` }} title={`Healthy: ${pctHealthy}%`} />
-            <div className="progress-segment progress-low" style={{ width: `${pctLow}%` }} title={`Low Stock: ${pctLow}%`} />
-            <div className="progress-segment progress-out" style={{ width: `${pctOut}%` }} title={`Out of Stock: ${pctOut}%`} />
-            <div className="progress-segment progress-untracked" style={{ width: `${pctUntracked}%` }} title={`Untracked: ${pctUntracked}%`} />
+            <div
+              className="progress-segment progress-healthy"
+              style={{ width: `${pctHealthy}%` }}
+              title={`Healthy: ${pctHealthy}%`}
+            />
+            <div
+              className="progress-segment progress-low"
+              style={{ width: `${pctLow}%` }}
+              title={`Low Stock: ${pctLow}%`}
+            />
+            <div
+              className="progress-segment progress-out"
+              style={{ width: `${pctOut}%` }}
+              title={`Out of Stock: ${pctOut}%`}
+            />
+            <div
+              className="progress-segment progress-untracked"
+              style={{ width: `${pctUntracked}%` }}
+              title={`Untracked: ${pctUntracked}%`}
+            />
           </div>
 
           <div className="health-legend">
             <div className="legend-item">
               <span className="legend-dot" style={{ backgroundColor: 'var(--success)' }} />
-              <span>{t('dashboard.healthy')}: <strong>{health.healthyCount}</strong> ({pctHealthy}%)</span>
+              <span>
+                {t('dashboard.healthy')}: <strong>{health.healthyCount}</strong> ({pctHealthy}%)
+              </span>
             </div>
             <div className="legend-item">
               <span className="legend-dot" style={{ backgroundColor: 'var(--warning)' }} />
-              <span>{t('dashboard.lowStock')}: <strong>{health.lowStockCount}</strong> ({pctLow}%)</span>
+              <span>
+                {t('dashboard.lowStock')}: <strong>{health.lowStockCount}</strong> ({pctLow}%)
+              </span>
             </div>
             <div className="legend-item">
               <span className="legend-dot" style={{ backgroundColor: 'var(--danger)' }} />
-              <span>{t('dashboard.outOfStock')}: <strong>{health.outOfStockCount}</strong> ({pctOut}%)</span>
+              <span>
+                {t('dashboard.outOfStock')}: <strong>{health.outOfStockCount}</strong> ({pctOut}%)
+              </span>
             </div>
             <div className="legend-item">
               <span className="legend-dot" style={{ backgroundColor: 'var(--neutral)' }} />
-              <span>{t('dashboard.untracked')}: <strong>{health.untrackedCount}</strong> ({pctUntracked}%)</span>
+              <span>
+                {t('dashboard.untracked')}: <strong>{health.untrackedCount}</strong> ({pctUntracked}
+                %)
+              </span>
             </div>
           </div>
         </div>
@@ -320,7 +379,9 @@ export const DashboardPage: React.FC = () => {
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-                {isLoadingTrends ? 'Loading sales velocity data...' : 'No sales velocity history recorded'}
+                {isLoadingTrends
+                  ? 'Loading sales velocity data...'
+                  : 'No sales velocity history recorded'}
               </div>
             )}
           </div>
@@ -392,7 +453,10 @@ export const DashboardPage: React.FC = () => {
         <div className="card-header">
           <div className="card-title-group">
             <h3>Restock Recommendations</h3>
-            <p>Actionable replenishment priorities calculated using sales velocity and lead time horizon</p>
+            <p>
+              Actionable replenishment priorities calculated using sales velocity and lead time
+              horizon
+            </p>
           </div>
           <button className="btn btn-secondary btn-sm" onClick={() => navigate('/analytics')}>
             <span>Full Reorder Plan</span>
@@ -433,7 +497,8 @@ export const DashboardPage: React.FC = () => {
                         <span
                           style={{
                             fontWeight: 700,
-                            color: rec.availableQuantity === 0 ? 'var(--danger)' : 'var(--text-main)',
+                            color:
+                              rec.availableQuantity === 0 ? 'var(--danger)' : 'var(--text-main)',
                           }}
                         >
                           {rec.availableQuantity} units
@@ -484,7 +549,10 @@ export const DashboardPage: React.FC = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                    <td
+                      colSpan={8}
+                      style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}
+                    >
                       No replenishment required at this time. All tracked inventory is healthy.
                     </td>
                   </tr>
@@ -525,21 +593,29 @@ export const DashboardPage: React.FC = () => {
                 {(summary?.recentOrders || []).map((order) => (
                   <tr key={order.id}>
                     <td>
-                      <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{order.orderNumber}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                        {order.orderNumber}
+                      </span>
                     </td>
                     <td>{order.customerName || 'Guest Customer'}</td>
                     <td style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
                     <td>
-                      <span style={{ fontWeight: 600 }}>${order.totalAmount.toFixed(2)} {order.currencyCode}</span>
+                      <span style={{ fontWeight: 600 }}>
+                        ${order.totalAmount.toFixed(2)} {order.currencyCode}
+                      </span>
                     </td>
                     <td>
                       <span
                         className="badge"
                         style={{
-                          backgroundColor: order.financialStatus === 'paid' ? 'var(--success-bg)' : 'var(--warning-bg)',
-                          color: order.financialStatus === 'paid' ? 'var(--success)' : 'var(--warning)',
+                          backgroundColor:
+                            order.financialStatus === 'paid'
+                              ? 'var(--success-bg)'
+                              : 'var(--warning-bg)',
+                          color:
+                            order.financialStatus === 'paid' ? 'var(--success)' : 'var(--warning)',
                         }}
                       >
                         {order.financialStatus}
@@ -553,14 +629,14 @@ export const DashboardPage: React.FC = () => {
                             order.fulfillmentStatus === 'fulfilled'
                               ? 'var(--success-bg)'
                               : order.fulfillmentStatus === 'partial'
-                              ? 'var(--info-bg)'
-                              : 'var(--warning-bg)',
+                                ? 'var(--info-bg)'
+                                : 'var(--warning-bg)',
                           color:
                             order.fulfillmentStatus === 'fulfilled'
                               ? 'var(--success)'
                               : order.fulfillmentStatus === 'partial'
-                              ? 'var(--info)'
-                              : 'var(--warning)',
+                                ? 'var(--info)'
+                                : 'var(--warning)',
                         }}
                       >
                         {order.fulfillmentStatus}

@@ -134,9 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           <Bell size={18} />
           <span>{t('nav.alerts')}</span>
-          {activeAlertsCount > 0 && (
-            <span className="nav-item-badge">{activeAlertsCount}</span>
-          )}
+          {activeAlertsCount > 0 && <span className="nav-item-badge">{activeAlertsCount}</span>}
         </button>
 
         <button

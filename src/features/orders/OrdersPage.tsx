@@ -62,13 +62,29 @@ export const OrdersPage: React.FC = () => {
   const getFulfillmentBadge = (status: FulfillmentStatus) => {
     switch (status) {
       case 'fulfilled':
-        return <span className="badge badge-healthy"><CheckCircle size={12} /> Fulfilled</span>;
+        return (
+          <span className="badge badge-healthy">
+            <CheckCircle size={12} /> Fulfilled
+          </span>
+        );
       case 'partial':
-        return <span className="badge badge-restock_soon"><Clock size={12} /> Partially Fulfilled</span>;
+        return (
+          <span className="badge badge-restock_soon">
+            <Clock size={12} /> Partially Fulfilled
+          </span>
+        );
       case 'unfulfilled':
-        return <span className="badge badge-low_stock"><AlertTriangle size={12} /> Unfulfilled</span>;
+        return (
+          <span className="badge badge-low_stock">
+            <AlertTriangle size={12} /> Unfulfilled
+          </span>
+        );
       case 'cancelled':
-        return <span className="badge badge-out_of_stock"><XCircle size={12} /> Canceled</span>;
+        return (
+          <span className="badge badge-out_of_stock">
+            <XCircle size={12} /> Canceled
+          </span>
+        );
       default:
         return <span className="badge badge-untracked">{status}</span>;
     }
@@ -181,19 +197,29 @@ export const OrdersPage: React.FC = () => {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                <td
+                  colSpan={8}
+                  style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}
+                >
                   Loading orders from backend...
                 </td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                <td
+                  colSpan={8}
+                  style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}
+                >
                   No orders match the selected filter.
                 </td>
               </tr>
             ) : (
               orders.map((order) => (
-                <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => openOrderModal(order)}>
+                <tr
+                  key={order.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => openOrderModal(order)}
+                >
                   <td>
                     <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '14px' }}>
                       {order.orderNumber}
@@ -201,7 +227,9 @@ export const OrdersPage: React.FC = () => {
                   </td>
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontWeight: 600 }}>{order.customerName || 'Anonymous Customer'}</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {order.customerName || 'Anonymous Customer'}
+                      </span>
                       {order.customerEmail && (
                         <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
                           {order.customerEmail}
@@ -220,14 +248,14 @@ export const OrdersPage: React.FC = () => {
                           order.financialStatus === 'paid'
                             ? 'var(--success-bg)'
                             : order.financialStatus === 'refunded'
-                            ? 'var(--danger-bg)'
-                            : 'var(--warning-bg)',
+                              ? 'var(--danger-bg)'
+                              : 'var(--warning-bg)',
                         color:
                           order.financialStatus === 'paid'
                             ? 'var(--success)'
                             : order.financialStatus === 'refunded'
-                            ? 'var(--danger)'
-                            : 'var(--warning)',
+                              ? 'var(--danger)'
+                              : 'var(--warning)',
                       }}
                     >
                       {order.financialStatus}

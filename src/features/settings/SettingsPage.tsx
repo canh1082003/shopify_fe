@@ -183,17 +183,23 @@ export const SettingsPage: React.FC = () => {
               }}
             >
               <div>
-                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Shopify Store Domain</span>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  Shopify Store Domain
+                </span>
                 <div style={{ fontWeight: 600, fontSize: '14px', marginTop: '3px' }}>
                   {integration?.shopDomain || 'stockpilot-demo.myshopify.com'}
                 </div>
               </div>
 
               <div>
-                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Connection State</span>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  Connection State
+                </span>
                 <div style={{ marginTop: '3px' }}>
                   {integration?.isShopifyConnected ? (
-                    <span className="badge badge-healthy"><CheckCircle size={12} /> Connected</span>
+                    <span className="badge badge-healthy">
+                      <CheckCircle size={12} /> Connected
+                    </span>
                   ) : (
                     <span className="badge badge-low_stock">Demo Mode (Offline)</span>
                   )}
@@ -201,9 +207,13 @@ export const SettingsPage: React.FC = () => {
               </div>
 
               <div>
-                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Last Store Sync</span>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  Last Store Sync
+                </span>
                 <div style={{ fontWeight: 500, fontSize: '13px', marginTop: '3px' }}>
-                  {integration?.lastSyncedAt ? new Date(integration.lastSyncedAt).toLocaleString() : 'Just now'}
+                  {integration?.lastSyncedAt
+                    ? new Date(integration.lastSyncedAt).toLocaleString()
+                    : 'Just now'}
                 </div>
               </div>
             </div>
@@ -227,7 +237,10 @@ export const SettingsPage: React.FC = () => {
                 </span>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                   Remaining validity:{' '}
-                  <strong>{tokenInfo?.remainingSeconds ? `${tokenInfo.remainingSeconds}s` : '24 hours'}</strong> • Tenant: {tokenInfo?.shop?.domain || integration?.shopDomain}
+                  <strong>
+                    {tokenInfo?.remainingSeconds ? `${tokenInfo.remainingSeconds}s` : '24 hours'}
+                  </strong>{' '}
+                  • Tenant: {tokenInfo?.shop?.domain || integration?.shopDomain}
                 </div>
               </div>
               <button
@@ -252,10 +265,20 @@ export const SettingsPage: React.FC = () => {
             </div>
             <Sliders size={18} style={{ color: 'var(--primary)' }} />
           </div>
-          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <div
+            className="card-body"
+            style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}
+          >
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    marginBottom: '6px',
+                  }}
+                >
                   Default Low Stock Threshold (Units)
                 </label>
                 <input
@@ -267,13 +290,28 @@ export const SettingsPage: React.FC = () => {
                   className="search-input"
                   style={{ paddingLeft: '12px' }}
                 />
-                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                  Triggers low stock warnings when available quantity reaches or falls below this number.
+                <span
+                  style={{
+                    fontSize: '11.5px',
+                    color: 'var(--text-muted)',
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
+                  Triggers low stock warnings when available quantity reaches or falls below this
+                  number.
                 </span>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    marginBottom: '6px',
+                  }}
+                >
                   Sales Velocity Calculation Window
                 </label>
                 <select
@@ -288,7 +326,14 @@ export const SettingsPage: React.FC = () => {
                   <option value={60}>Last 60 Days (Extended smoothing)</option>
                   <option value={90}>Last 90 Days (Quarterly average)</option>
                 </select>
-                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                <span
+                  style={{
+                    fontSize: '11.5px',
+                    color: 'var(--text-muted)',
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
                   Duration used to calculate average daily unit sales for runway forecasting.
                 </span>
               </div>
@@ -296,7 +341,14 @@ export const SettingsPage: React.FC = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    marginBottom: '6px',
+                  }}
+                >
                   Default Restock Lead Time (Days)
                 </label>
                 <input
@@ -308,13 +360,27 @@ export const SettingsPage: React.FC = () => {
                   className="search-input"
                   style={{ paddingLeft: '12px' }}
                 />
-                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                <span
+                  style={{
+                    fontSize: '11.5px',
+                    color: 'var(--text-muted)',
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
                   Estimated calendar days from purchase order placement until warehouse receipt.
                 </span>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    marginBottom: '6px',
+                  }}
+                >
                   Safety Stock Buffer (Days)
                 </label>
                 <input
@@ -326,14 +392,24 @@ export const SettingsPage: React.FC = () => {
                   className="search-input"
                   style={{ paddingLeft: '12px' }}
                 />
-                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                  Extra cushion days to prevent stockouts caused by transit delays or sudden sales spikes.
+                <span
+                  style={{
+                    fontSize: '11.5px',
+                    color: 'var(--text-muted)',
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
+                  Extra cushion days to prevent stockouts caused by transit delays or sudden sales
+                  spikes.
                 </span>
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+              <label
+                style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}
+              >
                 Inventory Location Scope
               </label>
               <select
@@ -359,7 +435,10 @@ export const SettingsPage: React.FC = () => {
             </div>
             <Bell size={18} style={{ color: 'var(--primary)' }} />
           </div>
-          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <div
+            className="card-body"
+            style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <input
                 type="checkbox"
@@ -368,7 +447,10 @@ export const SettingsPage: React.FC = () => {
                 onChange={(e) => setEmailEnabled(e.target.checked)}
                 style={{ width: '18px', height: '18px', cursor: 'pointer' }}
               />
-              <label htmlFor="emailEnabled" style={{ fontSize: '13.5px', fontWeight: 600, cursor: 'pointer' }}>
+              <label
+                htmlFor="emailEnabled"
+                style={{ fontSize: '13.5px', fontWeight: 600, cursor: 'pointer' }}
+              >
                 Enable email notifications for low-stock and stockout alerts
               </label>
             </div>
@@ -376,7 +458,14 @@ export const SettingsPage: React.FC = () => {
             {emailEnabled && (
               <>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      marginBottom: '6px',
+                    }}
+                  >
                     Merchant Notification Email Address
                   </label>
                   <input
@@ -423,7 +512,9 @@ export const SettingsPage: React.FC = () => {
           <div className="card-header">
             <div className="card-title-group">
               <h3>Variant-Level Overrides</h3>
-              <p>Specific products configured with customized low stock thresholds and lead times</p>
+              <p>
+                Specific products configured with customized low stock thresholds and lead times
+              </p>
             </div>
           </div>
           <div className="card-body" style={{ padding: 0 }}>
@@ -465,8 +556,16 @@ export const SettingsPage: React.FC = () => {
                 </table>
               </div>
             ) : (
-              <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
-                No variant-level overrides configured. All products use the global store rules above.
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '30px',
+                  color: 'var(--text-muted)',
+                  fontSize: '13px',
+                }}
+              >
+                No variant-level overrides configured. All products use the global store rules
+                above.
               </div>
             )}
           </div>
@@ -505,7 +604,12 @@ export const SettingsPage: React.FC = () => {
 
         {/* Save Bar */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '40px' }}>
-          <button type="submit" className="btn btn-primary" disabled={isSaving} style={{ padding: '10px 24px' }}>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={isSaving}
+            style={{ padding: '10px 24px' }}
+          >
             <Save size={16} />
             <span>{isSaving ? t('settings.saving') : t('settings.saveSettings')}</span>
           </button>

@@ -54,21 +54,45 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <span className="badge badge-healthy"><CheckCircle size={12} /> Healthy Stock</span>;
+        return (
+          <span className="badge badge-healthy">
+            <CheckCircle size={12} /> Healthy Stock
+          </span>
+        );
       case 'low_stock':
-        return <span className="badge badge-low_stock"><AlertTriangle size={12} /> Low Stock</span>;
+        return (
+          <span className="badge badge-low_stock">
+            <AlertTriangle size={12} /> Low Stock
+          </span>
+        );
       case 'out_of_stock':
-        return <span className="badge badge-out_of_stock"><AlertTriangle size={12} /> Out of Stock</span>;
+        return (
+          <span className="badge badge-out_of_stock">
+            <AlertTriangle size={12} /> Out of Stock
+          </span>
+        );
       case 'restock_soon':
-        return <span className="badge badge-restock_soon"><Clock size={12} /> Restock Soon</span>;
+        return (
+          <span className="badge badge-restock_soon">
+            <Clock size={12} /> Restock Soon
+          </span>
+        );
       default:
-        return <span className="badge badge-untracked"><HelpCircle size={12} /> Untracked</span>;
+        return (
+          <span className="badge badge-untracked">
+            <HelpCircle size={12} /> Untracked
+          </span>
+        );
     }
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '720px' }}>
+      <div
+        className="modal-dialog"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: '720px' }}
+      >
         {/* Header */}
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -117,7 +141,10 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div
+          className="modal-body"
+          style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+        >
           {/* Key Intelligence Metrics */}
           <div
             style={{
@@ -133,7 +160,14 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
               <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 500 }}>
                 Available Stock
               </span>
-              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-main)', marginTop: '2px' }}>
+              <div
+                style={{
+                  fontSize: '20px',
+                  fontWeight: 700,
+                  color: 'var(--text-main)',
+                  marginTop: '2px',
+                }}
+              >
                 {item.availableQuantity} units
               </div>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -145,7 +179,14 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
               <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 500 }}>
                 Daily Sales Velocity
               </span>
-              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--primary)', marginTop: '2px' }}>
+              <div
+                style={{
+                  fontSize: '20px',
+                  fontWeight: 700,
+                  color: 'var(--primary)',
+                  marginTop: '2px',
+                }}
+              >
                 {item.averageDailySales} /day
               </div>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -187,7 +228,9 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
                   marginTop: '2px',
                 }}
               >
-                {item.recommendedRestockQuantity > 0 ? `+${item.recommendedRestockQuantity} units` : 'Adequate'}
+                {item.recommendedRestockQuantity > 0
+                  ? `+${item.recommendedRestockQuantity} units`
+                  : 'Adequate'}
               </div>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                 Target: {item.targetStockLevel} units
@@ -227,14 +270,22 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
                     <tr key={loc.locationId}>
                       <td style={{ fontWeight: 600 }}>{loc.locationName}</td>
                       <td>
-                        <span style={{ fontWeight: 600, color: loc.availableQuantity <= 0 ? 'var(--danger)' : 'var(--text-main)' }}>
+                        <span
+                          style={{
+                            fontWeight: 600,
+                            color:
+                              loc.availableQuantity <= 0 ? 'var(--danger)' : 'var(--text-main)',
+                          }}
+                        >
                           {loc.availableQuantity}
                         </span>
                       </td>
                       <td>{loc.committedQuantity}</td>
                       <td>
                         {loc.incomingQuantity > 0 ? (
-                          <span style={{ color: 'var(--primary)', fontWeight: 600 }}>+{loc.incomingQuantity}</span>
+                          <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                            +{loc.incomingQuantity}
+                          </span>
                         ) : (
                           <span style={{ color: 'var(--text-muted)' }}>0</span>
                         )}
@@ -251,7 +302,14 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
 
           {/* Forecasting & Lead Time Overrides Form */}
           <form onSubmit={handleSaveOverrides}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '12px',
+              }}
+            >
               <h4
                 style={{
                   fontSize: '13.5px',
@@ -282,7 +340,15 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
               }}
             >
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: 'var(--text-secondary)',
+                    marginBottom: '6px',
+                  }}
+                >
                   Low Stock Threshold
                 </label>
                 <input
@@ -294,13 +360,28 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
                   className="search-input"
                   style={{ paddingLeft: '12px' }}
                 />
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--text-muted)',
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
                   Triggers alert when stock ≤ threshold
                 </span>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: 'var(--text-secondary)',
+                    marginBottom: '6px',
+                  }}
+                >
                   Restock Lead Time (Days)
                 </label>
                 <input
@@ -312,13 +393,28 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
                   className="search-input"
                   style={{ paddingLeft: '12px' }}
                 />
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--text-muted)',
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
                   Days required for supplier delivery
                 </span>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: 'var(--text-secondary)',
+                    marginBottom: '6px',
+                  }}
+                >
                   Safety Stock (Days)
                 </label>
                 <input
@@ -330,18 +426,21 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
                   className="search-input"
                   style={{ paddingLeft: '12px' }}
                 />
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--text-muted)',
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
                   Buffer days to avoid sudden stockouts
                 </span>
               </div>
             </div>
 
             <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="submit"
-                className="btn btn-primary btn-sm"
-                disabled={isSaving}
-              >
+              <button type="submit" className="btn btn-primary btn-sm" disabled={isSaving}>
                 <Save size={14} />
                 <span>{isSaving ? 'Saving Changes...' : 'Save Forecasting Rules'}</span>
               </button>
@@ -362,10 +461,12 @@ export const InventoryDetailModal: React.FC<InventoryDetailModalProps> = ({
             }}
           >
             <div>
-              Unit Cost: <strong>${item.costPrice.toFixed(2)}</strong> | Selling Price: <strong>${item.price.toFixed(2)}</strong>
+              Unit Cost: <strong>${item.costPrice.toFixed(2)}</strong> | Selling Price:{' '}
+              <strong>${item.price.toFixed(2)}</strong>
             </div>
             <div>
-              Est. Reorder Cost: <strong>${item.estimatedReorderCost.toFixed(2)}</strong> ({item.recommendedRestockQuantity} units)
+              Est. Reorder Cost: <strong>${item.estimatedReorderCost.toFixed(2)}</strong> (
+              {item.recommendedRestockQuantity} units)
             </div>
           </div>
         </div>

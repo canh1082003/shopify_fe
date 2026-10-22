@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import {
-  Clock,
-  Zap,
-  Eye,
-  Copy,
-  Info,
-} from 'lucide-react';
-import {
-  SalesVelocitySummary,
-  StockoutRiskGroup,
-  RestockRecommendation,
-} from '../../types';
+import { Clock, Zap, Eye, Copy, Info } from 'lucide-react';
+import { SalesVelocitySummary, StockoutRiskGroup, RestockRecommendation } from '../../types';
 import { api } from '../../api';
 import { MainLayoutContextType } from '../../layouts/MainLayout';
 import { toast } from 'sonner';
@@ -97,9 +87,20 @@ export const AnalyticsPage: React.FC = () => {
       >
         <Info size={20} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }} />
         <div>
-          <strong style={{ color: 'var(--text-main)' }}>StockPilot Inventory Intelligence & Forecasting Engine:</strong>
+          <strong style={{ color: 'var(--text-main)' }}>
+            StockPilot Inventory Intelligence & Forecasting Engine:
+          </strong>
           <p style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
-            Restock recommendations use dynamic target stock formulas: <code style={{ color: 'var(--primary)', fontWeight: 600 }}>targetStock = max(lowStockThreshold, ceil(dailySales × (leadTimeDays + safetyStockDays)))</code>, and <code style={{ color: 'var(--primary)', fontWeight: 600 }}>reorderQty = max(0, targetStock - availableStock)</code>. Forecasts are decision-support estimates based on historical order velocity.
+            Restock recommendations use dynamic target stock formulas:{' '}
+            <code style={{ color: 'var(--primary)', fontWeight: 600 }}>
+              targetStock = max(lowStockThreshold, ceil(dailySales × (leadTimeDays +
+              safetyStockDays)))
+            </code>
+            , and{' '}
+            <code style={{ color: 'var(--primary)', fontWeight: 600 }}>
+              reorderQty = max(0, targetStock - availableStock)
+            </code>
+            . Forecasts are decision-support estimates based on historical order velocity.
           </p>
         </div>
       </div>
@@ -128,10 +129,10 @@ export const AnalyticsPage: React.FC = () => {
               const headerColor = isCrit
                 ? 'var(--danger)'
                 : isHigh
-                ? 'var(--warning)'
-                : isMed
-                ? 'var(--info)'
-                : 'var(--success)';
+                  ? 'var(--warning)'
+                  : isMed
+                    ? 'var(--info)'
+                    : 'var(--success)';
 
               return (
                 <div
@@ -146,14 +147,24 @@ export const AnalyticsPage: React.FC = () => {
                     gap: '10px',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
                     <span style={{ fontSize: '12px', fontWeight: 700, color: headerColor }}>
                       {group.label}
                     </span>
                     <span
                       className="badge"
                       style={{
-                        backgroundColor: isCrit ? 'var(--danger-bg)' : isHigh ? 'var(--warning-bg)' : 'var(--bg-card)',
+                        backgroundColor: isCrit
+                          ? 'var(--danger-bg)'
+                          : isHigh
+                            ? 'var(--warning-bg)'
+                            : 'var(--bg-card)',
                         color: headerColor,
                       }}
                     >
@@ -162,7 +173,14 @@ export const AnalyticsPage: React.FC = () => {
                   </div>
 
                   {/* Top Items preview in group */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: '120px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      minHeight: '120px',
+                    }}
+                  >
                     {group.items.length > 0 ? (
                       group.items.slice(0, 3).map((item) => (
                         <div
@@ -176,10 +194,27 @@ export const AnalyticsPage: React.FC = () => {
                             cursor: 'pointer',
                           }}
                         >
-                          <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div
+                            style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: 'var(--text-main)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
                             {item.productTitle}
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              fontSize: '11px',
+                              color: 'var(--text-muted)',
+                              marginTop: '2px',
+                            }}
+                          >
                             <span>{item.availableQuantity} units left</span>
                             <span style={{ fontWeight: 600, color: headerColor }}>
                               {item.daysRemaining}d runway
@@ -188,7 +223,14 @@ export const AnalyticsPage: React.FC = () => {
                         </div>
                       ))
                     ) : (
-                      <div style={{ textAlign: 'center', padding: '30px 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      <div
+                        style={{
+                          textAlign: 'center',
+                          padding: '30px 0',
+                          fontSize: '12px',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
                         No items in this risk window
                       </div>
                     )}
@@ -201,7 +243,14 @@ export const AnalyticsPage: React.FC = () => {
       </section>
 
       {/* Fast-Moving vs Slow-Moving Variants */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '20px',
+          marginBottom: '24px',
+        }}
+      >
         {/* Fast-Moving */}
         <section className="card" style={{ marginBottom: 0 }}>
           <div className="card-header">
@@ -224,10 +273,16 @@ export const AnalyticsPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {(velocity?.fastMoving || []).map((v) => (
-                    <tr key={v.variantId} style={{ cursor: 'pointer' }} onClick={() => openInventoryById(v.variantId)}>
+                    <tr
+                      key={v.variantId}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => openInventoryById(v.variantId)}
+                    >
                       <td>
                         <span style={{ fontWeight: 600 }}>{v.productTitle}</span>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{v.variantTitle}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          {v.variantTitle}
+                        </div>
                       </td>
                       <td>
                         <span style={{ fontWeight: 700, color: 'var(--primary)' }}>
@@ -239,7 +294,10 @@ export const AnalyticsPage: React.FC = () => {
                         <span
                           style={{
                             fontWeight: 600,
-                            color: v.daysRemaining !== null && v.daysRemaining <= 7 ? 'var(--danger)' : 'var(--text-main)',
+                            color:
+                              v.daysRemaining !== null && v.daysRemaining <= 7
+                                ? 'var(--danger)'
+                                : 'var(--text-main)',
                           }}
                         >
                           {v.daysRemaining !== null ? `${v.daysRemaining} days` : '—'}
@@ -275,13 +333,21 @@ export const AnalyticsPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {(velocity?.slowMoving || []).map((v) => (
-                    <tr key={v.variantId} style={{ cursor: 'pointer' }} onClick={() => openInventoryById(v.variantId)}>
+                    <tr
+                      key={v.variantId}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => openInventoryById(v.variantId)}
+                    >
                       <td>
                         <span style={{ fontWeight: 600 }}>{v.productTitle}</span>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{v.variantTitle}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          {v.variantTitle}
+                        </div>
                       </td>
                       <td>
-                        <span style={{ color: 'var(--text-muted)' }}>{v.averageDailySales} /day</span>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          {v.averageDailySales} /day
+                        </span>
                       </td>
                       <td>{v.availableQuantity}</td>
                       <td>
@@ -338,14 +404,21 @@ export const AnalyticsPage: React.FC = () => {
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 600 }}>{r.productTitle}</span>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{r.variantTitle}</span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {r.variantTitle}
+                          </span>
                         </div>
                       </td>
                       <td>
                         <code style={{ color: 'var(--primary)', fontWeight: 600 }}>{r.sku}</code>
                       </td>
                       <td>
-                        <span style={{ fontWeight: 700, color: r.availableQuantity <= 0 ? 'var(--danger)' : 'var(--text-main)' }}>
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            color: r.availableQuantity <= 0 ? 'var(--danger)' : 'var(--text-main)',
+                          }}
+                        >
                           {r.availableQuantity}
                         </span>
                       </td>
@@ -355,7 +428,12 @@ export const AnalyticsPage: React.FC = () => {
                           <span
                             style={{
                               fontWeight: 700,
-                              color: r.daysRemaining <= 3 ? 'var(--danger)' : r.daysRemaining <= 7 ? 'var(--warning)' : 'var(--text-main)',
+                              color:
+                                r.daysRemaining <= 3
+                                  ? 'var(--danger)'
+                                  : r.daysRemaining <= 7
+                                    ? 'var(--warning)'
+                                    : 'var(--text-main)',
                             }}
                           >
                             {r.daysRemaining} days
@@ -383,7 +461,9 @@ export const AnalyticsPage: React.FC = () => {
                       </td>
                       <td>
                         <span style={{ fontWeight: 600 }}>${r.estimatedCost.toFixed(2)}</span>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>@ ${r.unitCost}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          @ ${r.unitCost}
+                        </div>
                       </td>
                       <td>
                         <button
@@ -398,7 +478,10 @@ export const AnalyticsPage: React.FC = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={11} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                    <td
+                      colSpan={11}
+                      style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}
+                    >
                       No stock replenishment needed across catalog.
                     </td>
                   </tr>

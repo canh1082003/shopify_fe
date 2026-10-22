@@ -97,13 +97,29 @@ export const AlertsPage: React.FC = () => {
   const getAlertBadge = (type: AlertType) => {
     switch (type) {
       case 'out_of_stock':
-        return <span className="badge badge-out_of_stock"><AlertOctagon size={12} /> Out of Stock</span>;
+        return (
+          <span className="badge badge-out_of_stock">
+            <AlertOctagon size={12} /> Out of Stock
+          </span>
+        );
       case 'low_stock':
-        return <span className="badge badge-low_stock"><AlertTriangle size={12} /> Low Stock</span>;
+        return (
+          <span className="badge badge-low_stock">
+            <AlertTriangle size={12} /> Low Stock
+          </span>
+        );
       case 'restock_soon':
-        return <span className="badge badge-restock_soon"><Clock size={12} /> Restock Soon</span>;
+        return (
+          <span className="badge badge-restock_soon">
+            <Clock size={12} /> Restock Soon
+          </span>
+        );
       case 'untracked':
-        return <span className="badge badge-untracked"><HelpCircle size={12} /> Untracked</span>;
+        return (
+          <span className="badge badge-untracked">
+            <HelpCircle size={12} /> Untracked
+          </span>
+        );
     }
   };
 
@@ -118,7 +134,11 @@ export const AlertsPage: React.FC = () => {
           marginBottom: '24px',
         }}
       >
-        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setAlertTypeFilter('all')}>
+        <div
+          className="kpi-card"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setAlertTypeFilter('all')}
+        >
           <div className="kpi-card-header">
             <span className="kpi-label">{t('alerts.activeCount')}</span>
             <Bell size={18} style={{ color: 'var(--primary)' }} />
@@ -129,7 +149,11 @@ export const AlertsPage: React.FC = () => {
           <span className="kpi-subtext">Requiring merchant review</span>
         </div>
 
-        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setAlertTypeFilter('out_of_stock')}>
+        <div
+          className="kpi-card"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setAlertTypeFilter('out_of_stock')}
+        >
           <div className="kpi-card-header">
             <span className="kpi-label">{t('dashboard.outOfStock')}</span>
             <AlertOctagon size={18} style={{ color: 'var(--danger)' }} />
@@ -142,7 +166,11 @@ export const AlertsPage: React.FC = () => {
           <span className="kpi-subtext">Immediate action needed</span>
         </div>
 
-        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setAlertTypeFilter('low_stock')}>
+        <div
+          className="kpi-card"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setAlertTypeFilter('low_stock')}
+        >
           <div className="kpi-card-header">
             <span className="kpi-label">{t('dashboard.lowStock')}</span>
             <AlertTriangle size={18} style={{ color: 'var(--warning)' }} />
@@ -155,7 +183,11 @@ export const AlertsPage: React.FC = () => {
           <span className="kpi-subtext">Under low threshold</span>
         </div>
 
-        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setAlertTypeFilter('restock_soon')}>
+        <div
+          className="kpi-card"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setAlertTypeFilter('restock_soon')}
+        >
           <div className="kpi-card-header">
             <span className="kpi-label">{t('alerts.filterSoon')}</span>
             <Clock size={18} style={{ color: 'var(--info)' }} />
@@ -168,7 +200,11 @@ export const AlertsPage: React.FC = () => {
           <span className="kpi-subtext">Within lead-time horizon</span>
         </div>
 
-        <div className="kpi-card" style={{ cursor: 'pointer' }} onClick={() => setStatusFilter('acknowledged')}>
+        <div
+          className="kpi-card"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setStatusFilter('acknowledged')}
+        >
           <div className="kpi-card-header">
             <span className="kpi-label">{t('alerts.acknowledged')}</span>
             <CheckCircle size={18} style={{ color: 'var(--success)' }} />
@@ -265,13 +301,19 @@ export const AlertsPage: React.FC = () => {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                <td
+                  colSpan={9}
+                  style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}
+                >
                   Loading stock alerts...
                 </td>
               </tr>
             ) : alerts.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                <td
+                  colSpan={9}
+                  style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}
+                >
                   No stock alerts found for the current selection.
                 </td>
               </tr>
@@ -309,7 +351,8 @@ export const AlertsPage: React.FC = () => {
                       <span
                         style={{
                           fontWeight: 600,
-                          color: alert.estimatedDaysRemaining <= 3 ? 'var(--danger)' : 'var(--warning)',
+                          color:
+                            alert.estimatedDaysRemaining <= 3 ? 'var(--danger)' : 'var(--warning)',
                         }}
                       >
                         {alert.estimatedDaysRemaining} days
@@ -321,8 +364,11 @@ export const AlertsPage: React.FC = () => {
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       <span style={{ fontSize: '12.5px' }}>{alert.reason}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        State: <strong>{alert.status}</strong> • {new Date(alert.createdAt).toLocaleDateString()}
+                      <span
+                        style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}
+                      >
+                        State: <strong>{alert.status}</strong> •{' '}
+                        {new Date(alert.createdAt).toLocaleDateString()}
                       </span>
                     </div>
                   </td>
