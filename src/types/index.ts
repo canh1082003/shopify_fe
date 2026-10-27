@@ -56,9 +56,21 @@ export interface ProductVariant {
   sku: string;
   title: string;
   price: number;
+  compareAtPrice?: number | null;
   costPrice: number;
   tracked: boolean;
+  requiresShipping?: boolean;
+  taxable?: boolean;
   barcode?: string | null;
+  weight?: number;
+  weightUnit?: string;
+  dimensions?: {
+    length?: number;
+    width?: number;
+    height?: number;
+    unit?: string;
+  };
+  selectedOptions?: Array<{ name: string; value: string }>;
   locationId: string;
   locationName: string;
   availableQuantity: number;
@@ -70,6 +82,30 @@ export interface ProductVariant {
   leadTimeDays: number;
   safetyStockDays: number;
   recommendedRestockQuantity: number;
+  attributes?: Record<string, any>;
+  updatedAt: string;
+}
+
+export interface Product {
+  id: string;
+  shopId: string;
+  shopifyProductId: string;
+  title: string;
+  handle?: string;
+  description?: string;
+  vendor: string;
+  productType: string;
+  category?: string;
+  productKind?: 'physical' | 'digital' | 'service' | 'bundle';
+  status: 'active' | 'draft' | 'archived';
+  imageUrl?: string | null;
+  images?: Array<{ id?: string; url: string; alt?: string; position?: number }>;
+  options?: Array<{ id?: string; name: string; values: string[] }>;
+  tags?: string[];
+  attributes?: Record<string, any>;
+  hasVariants?: boolean;
+  publishedAt?: string | null;
+  createdAt: string;
   updatedAt: string;
 }
 
