@@ -138,7 +138,8 @@ export const TopBar: React.FC<TopBarProps> = ({
             const targetDomain = shopDomain || 'conganh-test-lab.myshopify.com';
             const clientId = 'ff20213b7fd3fb4fc9ebd655aed73abd';
             const scopes = 'read_products,read_inventory,read_orders,read_locations';
-            const redirectUri = 'https://shopify-be-3jd9.onrender.com/api/integrations/shopify/callback';
+            const redirectUri =
+              'https://shopify-be-3jd9.onrender.com/api/integrations/shopify/callback';
             const authUrl = `https://${targetDomain}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(
               redirectUri
             )}`;

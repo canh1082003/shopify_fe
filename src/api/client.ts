@@ -61,15 +61,21 @@ export class ApiClient {
    * Obtain a fresh Bearer token from Backend
    */
   public async fetchToken(shopDomain?: string): Promise<string> {
-    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const urlParams =
+      typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const urlShop = urlParams?.get('shop') || undefined;
     if (urlShop && typeof window !== 'undefined') {
       try {
         sessionStorage.setItem('stockpilot_shop_domain', urlShop);
-      } catch {}
+      } catch {
+        // Silently ignore storage quota or private window errors
+      }
     }
 
-    const savedShop = typeof window !== 'undefined' ? sessionStorage.getItem('stockpilot_shop_domain') || undefined : undefined;
+    const savedShop =
+      typeof window !== 'undefined'
+        ? sessionStorage.getItem('stockpilot_shop_domain') || undefined
+        : undefined;
     const targetShop = shopDomain || urlShop || savedShop;
 
     const res = await fetch(`${API_BASE_URL}/auth/token`, {
