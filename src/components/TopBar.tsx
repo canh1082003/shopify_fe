@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { Menu, Sun, Moon, RefreshCw, ShoppingBag, Clock, Globe } from 'lucide-react';
+import { Menu, Sun, Moon, RefreshCw, ShoppingBag, Clock, Globe, Key } from 'lucide-react';
 import { NavigationTab, DashboardSummary } from '../types';
 import { useTranslation } from '../i18n';
 
@@ -129,6 +129,27 @@ export const TopBar: React.FC<TopBarProps> = ({
           <Clock size={13} />
           <span>{lastSync}</span>
         </div>
+
+        {/* Authorize / Connect Button */}
+        <button
+          id="btn-oauth-shopify"
+          className="btn btn-primary btn-sm"
+          onClick={() => {
+            const targetDomain = shopDomain || 'conganh-test-lab.myshopify.com';
+            const clientId = 'ff20213b7fd3fb4fc9ebd655aed73abd';
+            const scopes = 'read_products,read_inventory,read_orders,read_locations';
+            const redirectUri = 'https://shopify-be-3jd9.onrender.com/api/integrations/shopify/callback';
+            const authUrl = `https://${targetDomain}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(
+              redirectUri
+            )}`;
+            window.open(authUrl, '_blank');
+          }}
+          title="Cấp quyền truy cập dữ liệu Shopify (OAuth)"
+          style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+        >
+          <Key size={14} />
+          <span>Cấp quyền Shopify</span>
+        </button>
 
         {/* Sync Button */}
         <button

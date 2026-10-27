@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   RefreshCw,
   Globe,
+  Key,
 } from 'lucide-react';
 import { ShopifyIntegrationStatus } from '../../types';
 import { api, TokenStatusInfo } from '../../api';
@@ -216,6 +217,47 @@ export const SettingsPage: React.FC = () => {
                     : 'Just now'}
                 </div>
               </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: '16px',
+                paddingTop: '16px',
+                borderTop: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '13.5px' }}>
+                  Cấp quyền truy cập dữ liệu Shopify (OAuth Handshake)
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Mở màn hình phân quyền chính thức của Shopify để cấp phép đọc danh mục sản phẩm, biến thể và đơn hàng.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  const targetDomain = integration?.shopDomain || 'conganh-test-lab.myshopify.com';
+                  const clientId = 'ff20213b7fd3fb4fc9ebd655aed73abd';
+                  const scopes = 'read_products,read_inventory,read_orders,read_locations';
+                  const redirectUri = 'https://shopify-be-3jd9.onrender.com/api/integrations/shopify/callback';
+                  const authUrl = `https://${targetDomain}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(
+                    redirectUri
+                  )}`;
+                  window.open(authUrl, '_blank');
+                }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Key size={14} />
+                <span>Cấp quyền kết nối Shopify</span>
+              </button>
             </div>
           </div>
         </section>
