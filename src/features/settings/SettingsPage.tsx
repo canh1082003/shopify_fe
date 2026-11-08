@@ -188,7 +188,7 @@ export const SettingsPage: React.FC = () => {
                   Shopify Store Domain
                 </span>
                 <div style={{ fontWeight: 600, fontSize: '14px', marginTop: '3px' }}>
-                  {integration?.shopDomain || 'stockpilot-demo.myshopify.com'}
+                  {integration?.shopDomain || 'conganh-test-lab.myshopify.com'}
                 </div>
               </div>
 
