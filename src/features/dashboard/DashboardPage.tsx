@@ -44,21 +44,21 @@ export const DashboardPage: React.FC = () => {
   }, [selectedPeriod]);
 
   const kpis = summary?.kpis || {
-    totalProducts: 7,
-    totalInventoryUnits: 140,
-    lowStockProducts: 4,
-    outOfStockProducts: 2,
-    ordersThisMonth: 6,
-    estimatedInventoryValue: 3968,
+    totalProducts: 0,
+    totalInventoryUnits: 0,
+    lowStockProducts: 0,
+    outOfStockProducts: 0,
+    ordersThisMonth: 0,
+    estimatedInventoryValue: 0,
     currency: 'USD',
   };
 
   const health = summary?.inventoryHealth || {
-    healthyCount: 5,
-    lowStockCount: 4,
-    outOfStockCount: 2,
-    untrackedCount: 1,
-    totalTracked: 11,
+    healthyCount: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+    untrackedCount: 0,
+    totalTracked: 0,
   };
 
   const totalTrackedVariants = Math.max(

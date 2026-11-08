@@ -74,7 +74,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   const { title, subtitle } = getTabTitle();
   const isConnected = summary?.monitoringStatus.isShopifyConnected ?? false;
-  const shopDomain = summary?.monitoringStatus.shopDomain || 'stockpilot-demo.myshopify.com';
+  const shopDomain = summary?.monitoringStatus.shopDomain || 'conganh-test-lab.myshopify.com';
   const lastSync = summary?.monitoringStatus.lastSyncedAt
     ? new Date(summary.monitoringStatus.lastSyncedAt).toLocaleTimeString([], {
         hour: '2-digit',
@@ -130,35 +130,38 @@ export const TopBar: React.FC<TopBarProps> = ({
           <span>{lastSync}</span>
         </div>
 
-        {/* Authorize / Connect Button */}
-        <button
-          id="btn-oauth-shopify"
-          className="btn btn-primary btn-sm"
-          onClick={() => {
-            const targetDomain = shopDomain || 'conganh-test-lab.myshopify.com';
-            const clientId = 'ff20213b7fd3fb4fc9ebd655aed73abd';
-            const scopes = 'read_products,read_inventory,read_orders,read_locations';
-            const redirectUri =
-              'https://shopify-be-3jd9.onrender.com/api/integrations/shopify/callback';
-            const authUrl = `https://${targetDomain}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(
-              redirectUri
-            )}`;
-            window.open(authUrl, '_blank');
-          }}
-          title="Cấp quyền truy cập dữ liệu Shopify (OAuth)"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <Key size={14} />
-          <span>Cấp quyền Shopify</span>
-        </button>
+        {/* Authorize / Connect Button - Only show if not connected */}
+        {!isConnected && (
+          <button
+            id="btn-oauth-shopify"
+            className="btn btn-primary btn-sm"
+            onClick={() => {
+              const targetDomain = shopDomain || 'conganh-test-lab.myshopify.com';
+              const clientId = 'ff20213b7fd3fb4fc9ebd655aed73abd';
+              const scopes = 'read_products,read_inventory,read_orders,read_locations';
+              const redirectUri =
+                'https://shopify-be-3jd9.onrender.com/api/integrations/shopify/callback';
+              const authUrl = `https://${targetDomain}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(
+                redirectUri
+              )}`;
+              window.open(authUrl, '_blank');
+            }}
+            title="Cấp quyền truy cập dữ liệu Shopify (OAuth)"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Key size={14} />
+            <span>Cấp quyền Shopify</span>
+          </button>
+        )}
 
         {/* Sync Button */}
         <button
           id="btn-sync-shopify"
-          className="btn btn-secondary btn-sm"
+          className={isConnected ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
           onClick={onSync}
           disabled={isSyncing}
           title={t('common.syncNow')}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
         >
           <RefreshCw size={14} className={isSyncing ? 'spin-animation' : ''} />
           <span>{isSyncing ? t('common.syncing') : t('common.syncNow')}</span>

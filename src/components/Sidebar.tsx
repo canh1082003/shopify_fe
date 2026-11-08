@@ -45,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     })();
 
   const activeAlertsCount = summary?.monitoringStatus.activeAlertsCount || 0;
-  const shopDomain = summary?.monitoringStatus.shopDomain || 'stockpilot-demo.myshopify.com';
+  const shopDomain = summary?.monitoringStatus.shopDomain || 'conganh-test-lab.myshopify.com';
   const isDemo = summary?.monitoringStatus.isDemoMode ?? true;
 
   const handleNavClick = (tab: NavigationTab) => {
