@@ -1,7 +1,7 @@
 import { httpClient, TokenStatusInfo } from '../client';
 
-export const fetchToken = async (shopDomain?: string): Promise<string> => {
-  return httpClient.fetchToken(shopDomain);
+export const fetchToken = async (): Promise<string> => {
+  return httpClient.fetchToken();
 };
 
 export const refreshAccessToken = async (): Promise<string> => {

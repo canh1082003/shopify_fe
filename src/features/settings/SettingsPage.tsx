@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ShopifyIntegrationStatus } from '../../types';
 import { api, TokenStatusInfo } from '../../api';
+import { initiateShopifyOAuth } from '../../utils/shopifyAuth';
 import { toast } from 'sonner';
 import { useOutletContext } from 'react-router-dom';
 import { MainLayoutContextType } from '../../layouts/MainLayout';
@@ -188,7 +189,7 @@ export const SettingsPage: React.FC = () => {
                   Shopify Store Domain
                 </span>
                 <div style={{ fontWeight: 600, fontSize: '14px', marginTop: '3px' }}>
-                  {integration?.shopDomain || 'conganh-test-lab.myshopify.com'}
+                  {integration?.shopDomain || tokenInfo?.shop?.domain || 'Chưa kết nối'}
                 </div>
               </div>
 
@@ -245,15 +246,8 @@ export const SettingsPage: React.FC = () => {
                 type="button"
                 className="btn btn-primary btn-sm"
                 onClick={() => {
-                  const targetDomain = integration?.shopDomain || 'conganh-test-lab.myshopify.com';
-                  const clientId = 'ff20213b7fd3fb4fc9ebd655aed73abd';
-                  const scopes = 'read_products,read_inventory,read_orders,read_locations';
-                  const redirectUri =
-                    'https://shopify-be-3jd9.onrender.com/api/integrations/shopify/callback';
-                  const authUrl = `https://${targetDomain}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(
-                    redirectUri
-                  )}`;
-                  window.open(authUrl, '_blank');
+                  const targetDomain = integration?.shopDomain || tokenInfo?.shop?.domain;
+                  void initiateShopifyOAuth(targetDomain);
                 }}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >

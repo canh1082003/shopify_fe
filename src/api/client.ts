@@ -16,6 +16,38 @@ export interface TokenStatusInfo {
   error?: string;
 }
 
+export class ApiClientError extends Error {
+  public statusCode: number;
+  public errorCode?: string;
+  public isAuthError: boolean;
+  public isUninstalled: boolean;
+  public handled: boolean;
+
+  constructor(
+    message: string,
+    options: {
+      statusCode?: number;
+      errorCode?: string;
+      isAuthError?: boolean;
+      isUninstalled?: boolean;
+      handled?: boolean;
+      cause?: unknown;
+    } = {}
+  ) {
+    super(message, { cause: options.cause });
+    this.name = 'ApiClientError';
+    this.statusCode = options.statusCode ?? 0;
+    this.errorCode = options.errorCode;
+    this.isAuthError = options.isAuthError ?? (this.statusCode === 401 || this.statusCode === 403);
+    this.isUninstalled =
+      options.isUninstalled ??
+      (options.errorCode === 'AUTH_SHOP_UNINSTALLED' ||
+        options.errorCode === 'AUTH_SHOP_NOT_FOUND' ||
+        options.errorCode === 'AUTH_SHOP_NOT_INSTALLED');
+    this.handled = options.handled ?? false;
+  }
+}
+
 export class ApiClient {
   private token: string | null = null;
   private refreshTokenValue: string | null = null;
@@ -58,43 +90,92 @@ export class ApiClient {
   }
 
   /**
-   * Obtain a fresh Bearer token from Backend
+   * Acquire token with mutex to prevent duplicate concurrent exchanges
    */
-  public async fetchToken(shopDomain?: string): Promise<string> {
-    const urlParams =
-      typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-    const urlShop = urlParams?.get('shop') || undefined;
-    if (urlShop && typeof window !== 'undefined') {
+  public async acquireToken(): Promise<string> {
+    if (this.tokenPromise) {
+      return this.tokenPromise;
+    }
+
+    this.tokenPromise = (async () => {
       try {
-        sessionStorage.setItem('stockpilot_shop_domain', urlShop);
-      } catch {
-        // Silently ignore storage quota or private window errors
+        return await this.fetchToken();
+      } finally {
+        this.tokenPromise = null;
+      }
+    })();
+
+    return this.tokenPromise;
+  }
+
+  /**
+   * Obtain a fresh Bearer token from Backend using verified Shopify App Bridge Session Token
+   */
+  public async fetchToken(): Promise<string> {
+    let sessionToken: string | null = null;
+
+    // Primary Source: Official Shopify App Bridge idToken()
+    if (typeof window !== 'undefined' && (window as any).shopify?.idToken) {
+      try {
+        sessionToken = await (window as any).shopify.idToken();
+      } catch (err) {
+        console.warn('[ApiClient] Failed to acquire Shopify App Bridge session token:', err);
       }
     }
 
-    const savedShop =
-      typeof window !== 'undefined'
-        ? sessionStorage.getItem('stockpilot_shop_domain') || undefined
-        : undefined;
-    const targetShop = shopDomain || urlShop || savedShop;
+    if (!sessionToken) {
+      const msg =
+        'Yêu cầu mở StockPilot bên trong Shopify Admin (App Bridge Session Token required).';
+      toast.error('Lỗi xác thực Shopify', { description: msg });
+      throw new ApiClientError(msg, {
+        statusCode: HttpStatus.UNAUTHORIZED,
+        errorCode: 'MISSING_SESSION_TOKEN',
+        isAuthError: true,
+        handled: true,
+      });
+    }
 
-    const res = await fetch(`${API_BASE_URL}/auth/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shopDomain: targetShop }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE_URL}/auth/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({ sessionToken }),
+      });
+    } catch (netErr) {
+      const netMsg = 'Không thể kết nối đến máy chủ xác thực (Network Error)';
+      toast.error('Lỗi kết nối mạng', { description: netMsg });
+      throw new ApiClientError(netMsg, { statusCode: 0, handled: true, cause: netErr });
+    }
 
-    const json: ApiResponse<{
-      token: string;
-      refreshToken: string;
-      expiresIn: number;
-    }> = await res.json();
+    let json: any = null;
+    try {
+      json = await res.json();
+    } catch {
+      // Non-json response
+    }
 
-    if (!res.ok || !json.success || !json.data?.token) {
+    if (!res.ok || !json?.success || !json?.data?.token) {
       const feedback = getStatusFeedback(res.status);
-      const msg = json.message || feedback.defaultMessage;
+      const msg = json?.message || feedback.defaultMessage;
+      const errorCode = json?.errorCode;
+
+      const isUninstalled =
+        errorCode === 'AUTH_SHOP_UNINSTALLED' ||
+        errorCode === 'AUTH_SHOP_NOT_FOUND' ||
+        errorCode === 'AUTH_SHOP_NOT_INSTALLED';
+
       toast.error(feedback.title, { description: msg });
-      throw new Error(msg);
+      throw new ApiClientError(msg, {
+        statusCode: res.status,
+        errorCode,
+        isAuthError: true,
+        isUninstalled,
+        handled: true,
+      });
     }
 
     this.storeTokens(json.data.token, json.data.refreshToken, json.data.expiresIn);
@@ -102,38 +183,72 @@ export class ApiClient {
   }
 
   /**
-   * Refresh an access token using the long-lived refresh token
+   * Refresh an access token using the long-lived refresh token with mutex
    */
   public async refreshAccessToken(): Promise<string> {
+    if (this.tokenPromise) {
+      return this.tokenPromise;
+    }
+
     if (!this.refreshTokenValue) {
-      return this.fetchToken();
+      return this.acquireToken();
     }
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: this.refreshTokenValue }),
-      });
+    this.tokenPromise = (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: this.refreshTokenValue }),
+        });
 
-      const json: ApiResponse<{
-        token: string;
-        refreshToken: string;
-        expiresIn: number;
-      }> = await res.json();
+        let json: any = null;
+        try {
+          json = await res.json();
+        } catch {
+          // ignore
+        }
 
-      if (!res.ok || !json.success || !json.data?.token) {
-        console.warn('[ApiClient] Refresh token invalid or expired. Fetching fresh token...');
+        if (!res.ok || !json?.success || !json?.data?.token) {
+          const errorCode = json?.errorCode;
+          if (
+            errorCode === 'AUTH_SHOP_UNINSTALLED' ||
+            errorCode === 'AUTH_SHOP_NOT_FOUND' ||
+            errorCode === 'AUTH_SHOP_NOT_INSTALLED'
+          ) {
+            this.clearTokens();
+            throw new ApiClientError(json?.message || 'Cửa hàng đã gỡ cài đặt.', {
+              statusCode: res.status,
+              errorCode,
+              isAuthError: true,
+              isUninstalled: true,
+              handled: true,
+            });
+          }
+
+          console.warn('[ApiClient] Refresh token invalid or expired. Fetching fresh token...');
+          this.clearTokens();
+          return await this.fetchToken();
+        }
+
+        this.storeTokens(json.data.token, json.data.refreshToken, json.data.expiresIn);
+        return json.data.token;
+      } catch (err) {
+        if (err instanceof ApiClientError && err.isUninstalled) {
+          throw err;
+        }
+        console.warn(
+          '[ApiClient] Refresh token failed. Falling back to fresh session token...',
+          err
+        );
         this.clearTokens();
-        return this.fetchToken();
+        return await this.fetchToken();
+      } finally {
+        this.tokenPromise = null;
       }
+    })();
 
-      this.storeTokens(json.data.token, json.data.refreshToken, json.data.expiresIn);
-      return json.data.token;
-    } catch (err) {
-      // Lỗi tạm thời (mạng/timeout/body không phải JSON): giữ token, ném lỗi cho caller
-      throw err instanceof Error ? err : new Error('Không thể làm mới token', { cause: err });
-    }
+    return this.tokenPromise;
   }
 
   /**
@@ -166,21 +281,10 @@ export class ApiClient {
 
     // If token is expiring or expired, refresh proactively
     if (this.refreshTokenValue && this.tokenExpiry && this.tokenExpiry <= now + 30) {
-      if (!this.tokenPromise) {
-        this.tokenPromise = this.refreshAccessToken().finally(() => {
-          this.tokenPromise = null;
-        });
-      }
-      return this.tokenPromise;
+      return this.refreshAccessToken();
     }
 
-    if (!this.tokenPromise) {
-      this.tokenPromise = this.fetchToken().finally(() => {
-        this.tokenPromise = null;
-      });
-    }
-
-    return this.tokenPromise;
+    return this.acquireToken();
   }
 
   /**
@@ -216,11 +320,57 @@ export class ApiClient {
 
       // Handle 401 Unauthorized (token expired or invalid)
       if (response.status === HttpStatus.UNAUTHORIZED && !isPublicEndpoint && !isRetry) {
+        let errJson: any = null;
+        try {
+          errJson = await response.clone().json();
+        } catch {
+          // ignore
+        }
+
+        const errorCode = errJson?.errorCode;
+        if (
+          errorCode === 'AUTH_SHOP_UNINSTALLED' ||
+          errorCode === 'AUTH_SHOP_NOT_FOUND' ||
+          errorCode === 'AUTH_SHOP_NOT_INSTALLED'
+        ) {
+          this.clearTokens();
+          const uninstalledMsg =
+            errJson?.message || 'Cửa hàng chưa cài đặt hoặc đã gỡ ứng dụng StockPilot.';
+          if (!silent) {
+            toast.error('Cửa hàng chưa kích hoạt', { description: uninstalledMsg });
+          }
+          throw new ApiClientError(uninstalledMsg, {
+            statusCode: HttpStatus.UNAUTHORIZED,
+            errorCode,
+            isAuthError: true,
+            isUninstalled: true,
+            handled: true,
+          });
+        }
+
         console.warn('[ApiClient] 401 Unauthorized encountered. Attempting token refresh...');
         const newToken = await this.refreshAccessToken();
         if (newToken) {
           return this.request<T>(endpoint, options, true, silent);
         }
+      }
+
+      // Handle 403 Forbidden (cross-tenant mismatch)
+      if (response.status === HttpStatus.FORBIDDEN && !silent) {
+        let errJson: any = null;
+        try {
+          errJson = await response.clone().json();
+        } catch {
+          // ignore
+        }
+        const errorMsg = errJson?.message || 'Không có quyền truy cập dữ liệu cửa hàng này.';
+        toast.error('Truy cập bị từ chối', { description: errorMsg });
+        throw new ApiClientError(errorMsg, {
+          statusCode: HttpStatus.FORBIDDEN,
+          errorCode: errJson?.errorCode,
+          isAuthError: true,
+          handled: true,
+        });
       }
 
       const json: ApiResponse<T> = await response.json();
@@ -236,21 +386,27 @@ export class ApiClient {
           });
         }
 
-        const apiErr = new Error(errorMsg);
-        (apiErr as Error & { handled?: boolean }).handled = true;
-        throw apiErr;
+        throw new ApiClientError(errorMsg, {
+          statusCode: response.status,
+          errorCode: json.errorCode,
+          handled: true,
+        });
       }
 
       return json.data as T;
     } catch (err: unknown) {
-      if (err instanceof Error && (err as Error & { handled?: boolean }).handled) {
+      if (err instanceof ApiClientError && err.handled) {
         throw err;
       }
       const networkMsg = 'Không thể kết nối đến máy chủ StockPilot Backend (Network Error)';
       if (!silent) {
         toast.error('Lỗi kết nối mạng', { description: networkMsg });
       }
-      throw new Error(networkMsg, { cause: err });
+      throw new ApiClientError(networkMsg, {
+        statusCode: 0,
+        handled: true,
+        cause: err,
+      });
     }
   }
 
