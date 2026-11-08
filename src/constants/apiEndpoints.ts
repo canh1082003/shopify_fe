@@ -31,6 +31,7 @@ export const NOTIFICATIONS_TEST = '/notifications/test';
 // Integrations Endpoints
 export const SHOPIFY_STATUS = '/integrations/shopify/status';
 export const SHOPIFY_SYNC = '/integrations/shopify/sync';
+export const SHOPIFY_AUTH = '/integrations/shopify/auth';
 
 // System Health
 export const HEALTH = '/health';

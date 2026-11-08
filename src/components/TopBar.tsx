@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Menu, Sun, Moon, RefreshCw, ShoppingBag, Clock, Globe, Key } from 'lucide-react';
 import { NavigationTab, DashboardSummary } from '../types';
 import { useTranslation } from '../i18n';
+import { initiateShopifyOAuth } from '../utils/shopifyAuth';
 
 interface TopBarProps {
   activeTab?: NavigationTab;
@@ -74,7 +75,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   const { title, subtitle } = getTabTitle();
   const isConnected = summary?.monitoringStatus.isShopifyConnected ?? false;
-  const shopDomain = summary?.monitoringStatus.shopDomain || 'conganh-test-lab.myshopify.com';
+  const shopDomain = summary?.monitoringStatus.shopDomain;
   const lastSync = summary?.monitoringStatus.lastSyncedAt
     ? new Date(summary.monitoringStatus.lastSyncedAt).toLocaleTimeString([], {
         hour: '2-digit',
@@ -104,14 +105,20 @@ export const TopBar: React.FC<TopBarProps> = ({
           className="shopify-status-badge"
           title={
             isConnected
-              ? `${t('common.liveShopify')}: ${shopDomain}`
-              : `${t('common.demoMode')} (${shopDomain})`
+              ? `${t('common.liveShopify')}: ${shopDomain || ''}`
+              : shopDomain
+                ? `${t('common.demoMode')} (${shopDomain})`
+                : t('common.demoMode')
           }
         >
           <span className={`status-dot ${isConnected ? 'connected' : 'demo'}`} />
           <ShoppingBag size={14} />
           <span>
-            {isConnected ? shopDomain : `${shopDomain.split('.')[0]} (${t('common.demoMode')})`}
+            {isConnected
+              ? (shopDomain || t('common.connected'))
+              : shopDomain
+                ? `${shopDomain.split('.')[0]} (${t('common.demoMode')})`
+                : t('common.demoMode')}
           </span>
         </div>
 
@@ -137,15 +144,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             id="btn-oauth-shopify"
             className="btn btn-primary btn-sm"
             onClick={() => {
-              const targetDomain = shopDomain || 'conganh-test-lab.myshopify.com';
-              const clientId = 'ff20213b7fd3fb4fc9ebd655aed73abd';
-              const scopes = 'read_products,read_inventory,read_orders,read_locations';
-              const redirectUri =
-                'https://shopify-be-3jd9.onrender.com/api/integrations/shopify/callback';
-              const authUrl = `https://${targetDomain}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(
-                redirectUri
-              )}`;
-              window.open(authUrl, '_blank');
+              void initiateShopifyOAuth(shopDomain);
             }}
             title="Cấp quyền truy cập dữ liệu Shopify (OAuth)"
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
