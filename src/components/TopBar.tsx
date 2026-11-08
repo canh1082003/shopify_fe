@@ -117,6 +117,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         {/* Last Sync Indicator */}
         <div
+          className="topbar-sync-time"
           style={{
             display: 'flex',
             alignItems: 'center',
