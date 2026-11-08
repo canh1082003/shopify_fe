@@ -60,7 +60,9 @@ const pathModuleName = 'node:path';
 const urlModuleName = 'node:url';
 
 const testPkg = (await import(testModuleName)) as unknown as TestModule;
-const assertPkg = (await import(assertModuleName)) as unknown as { default?: AssertModule } & AssertModule;
+const assertPkg = (await import(assertModuleName)) as unknown as {
+  default?: AssertModule;
+} & AssertModule;
 const fsPkg = (await import(fsModuleName)) as unknown as { default?: FsModule } & FsModule;
 const pathPkg = (await import(pathModuleName)) as unknown as { default?: PathModule } & PathModule;
 const urlPkg = (await import(urlModuleName)) as unknown as UrlModule;
@@ -265,7 +267,12 @@ describe('Shopify Frontend OAuth Integration (Step 2.5 — Final Blocker Fixes)'
       const mockTop = {};
       const mockWindow: MockWindow = {
         top: mockTop, // Embedded iframe (top !== window)
-        location: { hostname: 'admin.shopify.com', origin: 'https://admin.shopify.com', href: '', search: '' },
+        location: {
+          hostname: 'admin.shopify.com',
+          origin: 'https://admin.shopify.com',
+          href: '',
+          search: '',
+        },
         prompt: () => {
           promptWasCalled = true;
           return 'attacker.myshopify.com';
@@ -291,8 +298,7 @@ describe('Shopify Frontend OAuth Integration (Step 2.5 — Final Blocker Fixes)'
       assert.throws(
         () => resolveBackendApiBaseUrl('https://admin:secret123@api.stockpilot.io/api'),
         (err: unknown) =>
-          err instanceof Error &&
-          err.message.includes('không được chứa thông tin xác thực')
+          err instanceof Error && err.message.includes('không được chứa thông tin xác thực')
       );
     });
 
@@ -300,15 +306,13 @@ describe('Shopify Frontend OAuth Integration (Step 2.5 — Final Blocker Fixes)'
       assert.throws(
         () => resolveBackendApiBaseUrl('https://api.stockpilot.io/api?env=prod'),
         (err: unknown) =>
-          err instanceof Error &&
-          err.message.includes('không được chứa query string')
+          err instanceof Error && err.message.includes('không được chứa query string')
       );
 
       assert.throws(
         () => resolveBackendApiBaseUrl('https://api.stockpilot.io/api#section'),
         (err: unknown) =>
-          err instanceof Error &&
-          err.message.includes('không được chứa URL fragment')
+          err instanceof Error && err.message.includes('không được chứa URL fragment')
       );
     });
 
@@ -353,8 +357,7 @@ describe('Shopify Frontend OAuth Integration (Step 2.5 — Final Blocker Fixes)'
       assert.throws(
         () => resolveBackendApiBaseUrl('http://insecure-backend.remote.com/api'),
         (err: unknown) =>
-          err instanceof Error &&
-          err.message.includes('bắt buộc phải sử dụng HTTPS')
+          err instanceof Error && err.message.includes('bắt buộc phải sử dụng HTTPS')
       );
     });
   });
@@ -370,8 +373,7 @@ describe('Shopify Frontend OAuth Integration (Step 2.5 — Final Blocker Fixes)'
     it('rejects underscores in shop domain', () => {
       assert.throws(
         () => validateAndNormalizeShopDomain('store_bad.myshopify.com'),
-        (err: unknown) =>
-          err instanceof Error && err.message.includes('ký tự cấm')
+        (err: unknown) => err instanceof Error && err.message.includes('ký tự cấm')
       );
     });
 

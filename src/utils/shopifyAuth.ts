@@ -84,12 +84,12 @@ export function validateAndNormalizeShopDomain(rawDomain: unknown): string {
 export function resolveBackendApiBaseUrl(overrideBase?: string): string {
   const metaEnv = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
   const raw =
-    overrideBase !== undefined
-      ? overrideBase
-      : metaEnv?.VITE_API_BASE_URL || processEnvFallback();
+    overrideBase !== undefined ? overrideBase : metaEnv?.VITE_API_BASE_URL || processEnvFallback();
 
   if (!raw || typeof raw !== 'string' || !raw.trim()) {
-    throw new Error('Cấu hình Backend API base URL (VITE_API_BASE_URL) bị thiếu hoặc không hợp lệ.');
+    throw new Error(
+      'Cấu hình Backend API base URL (VITE_API_BASE_URL) bị thiếu hoặc không hợp lệ.'
+    );
   }
 
   const trimmed = raw.trim();
@@ -101,7 +101,9 @@ export function resolveBackendApiBaseUrl(overrideBase?: string): string {
     }
 
     if (trimmed.includes('?') || trimmed.includes('#') || trimmed.includes('@')) {
-      throw new Error('Cấu hình Backend URL tương đối không được chứa query, fragment hoặc credentials.');
+      throw new Error(
+        'Cấu hình Backend URL tương đối không được chứa query, fragment hoặc credentials.'
+      );
     }
 
     const isLocalHost =
@@ -188,10 +190,7 @@ function processEnvFallback(): string {
  * Strictly adheres to backend route contract:
  * GET /api/integrations/shopify/auth?shop=<normalizedShop>&redirect=true
  */
-export function resolveBackendOAuthUrl(
-  shopDomain: string,
-  apiBaseOverride?: string
-): string {
+export function resolveBackendOAuthUrl(shopDomain: string, apiBaseOverride?: string): string {
   const normalizedShop = validateAndNormalizeShopDomain(shopDomain);
   const apiBase = resolveBackendApiBaseUrl(apiBaseOverride);
   const cleanEndpoint = SHOPIFY_AUTH.startsWith('/') ? SHOPIFY_AUTH : `/${SHOPIFY_AUTH}`;
@@ -225,7 +224,10 @@ export async function resolveTargetShopDomain(
   const isEmbedded = typeof window !== 'undefined' && window.top !== window;
 
   // 2. App Bridge Session Token (Primary routing hint in embedded apps)
-  const win = typeof window !== 'undefined' ? (window as unknown as { shopify?: { idToken?: () => Promise<string> } }) : null;
+  const win =
+    typeof window !== 'undefined'
+      ? (window as unknown as { shopify?: { idToken?: () => Promise<string> } })
+      : null;
   if (win?.shopify?.idToken) {
     try {
       const token = await win.shopify.idToken();
@@ -269,7 +271,8 @@ export async function resolveTargetShopDomain(
         return validateAndNormalizeShopDomain(userInput);
       } catch (promptErr) {
         toast.error('Tên miền không hợp lệ', {
-          description: promptErr instanceof Error ? promptErr.message : 'Tên miền Shopify không hợp lệ',
+          description:
+            promptErr instanceof Error ? promptErr.message : 'Tên miền Shopify không hợp lệ',
         });
         return null;
       }

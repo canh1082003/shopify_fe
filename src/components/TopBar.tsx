@@ -115,7 +115,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <ShoppingBag size={14} />
           <span>
             {isConnected
-              ? (shopDomain || t('common.connected'))
+              ? shopDomain || t('common.connected')
               : shopDomain
                 ? `${shopDomain.split('.')[0]} (${t('common.demoMode')})`
                 : t('common.demoMode')}

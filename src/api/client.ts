@@ -124,7 +124,8 @@ export class ApiClient {
     }
 
     if (!sessionToken) {
-      const msg = 'Yêu cầu mở StockPilot bên trong Shopify Admin (App Bridge Session Token required).';
+      const msg =
+        'Yêu cầu mở StockPilot bên trong Shopify Admin (App Bridge Session Token required).';
       toast.error('Lỗi xác thực Shopify', { description: msg });
       throw new ApiClientError(msg, {
         statusCode: HttpStatus.UNAUTHORIZED,
@@ -236,7 +237,10 @@ export class ApiClient {
         if (err instanceof ApiClientError && err.isUninstalled) {
           throw err;
         }
-        console.warn('[ApiClient] Refresh token failed. Falling back to fresh session token...', err);
+        console.warn(
+          '[ApiClient] Refresh token failed. Falling back to fresh session token...',
+          err
+        );
         this.clearTokens();
         return await this.fetchToken();
       } finally {
